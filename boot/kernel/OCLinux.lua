@@ -2,7 +2,7 @@
 
 --Kernel metadata
 _G._OSNAME = "OCLinux"
-_G._OSVER = "1.0.0"
+_G._OSVER = "0.0.1"
 _G._OSVERSION = _OSNAME.." ".._OSVER
 
 --Initialize hardware and load important built-in APIS
