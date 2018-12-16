@@ -45,7 +45,6 @@ if gpu and screen then
     cls = function()gpuInvoke("fill", res)end
 end
 -- [[ END OF GPU SECTION ]]
-loadfile()
 
 -- Print out a test message
 gpuInvoke("set", 1, 1, "Nothing to see here....")
