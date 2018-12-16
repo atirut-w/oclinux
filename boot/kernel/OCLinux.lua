@@ -1,24 +1,20 @@
---OCLinux kernel
-
---Kernel metadata
+-- OCLinux kernel by WattanaGaming
+-- Clean start is always gud for your health ;)
+_G.boot_invoke = nil
+-- Kernel metadata
 _G._OSNAME = "OCLinux"
-_G._OSVER = "0.0.1"
+_G._OSVER = "1.0"
 _G._OSVERSION = _OSNAME.." ".._OSVER
 
---Initialize hardware and load important built-in APIS
+-- Fetch some important goodies
 local component = component or require('component')
 local computer = computer or require('computer')
 local unicode = unicode or require('unicode')
 
---Initialize GPU and display device
 local gpu = component.list("gpu")()
 local screen = component.list("screen")()
-screenRes = {}
-cursorPos = {
-  x = 1,
-  y = 1
-}
---GPU initialization function and invoke function from OpenLoader
+
+-- [[ Low-level GPU function from a very early version of OCLinux ]]
 function gpuInvoke(op, arg, ...)
     local res = {}
     local n = 1
@@ -48,39 +44,12 @@ if gpu and screen then
     gpuInvoke("fill", res)
     cls = function()gpuInvoke("fill", res)end
 end
-screenRes.w, screenRes.h = gpuInvoke("getResolution")
+-- [[ END OF GPU SECTION ]]
+loadfile()
 
---System-wide functions
-
---A very low-level GPU powered print and write function
-function gpuWrite(msg)
-  gpuInvoke("set", cursorPos.x, cursorPos.y, msg)
-  cursorPos.x = cursorPos.x + msg:len()
-end
-
-function gpuPrint(msg)
-  gpuInvoke("set", cursorPos.x, cursorPos.y, msg)
-  cursorPos.x = 1
-  cursorPos.y = cursorPos.y + 1
-end
-
---Kernel-own functions
-
-local function runInit(init)
-  dofile(init)
-end
-
-local function panic(reason)
-  if not reason then
-    reason = "no reason specified"
-  end
-  gpuPrint("Kernel panic: "..reason)
-  gpuPrint("")
-  gpuPrint("Kernel version: ".._OSVERSION)
-  gpuPrint("System uptime: "..computer.uptime())
-  while true do
+-- Print out a test message
+gpuInvoke("set", 1, 1, "Nothing to see here....")
+-- Halt the system, everything should be ok if there is no BSoD
+while true do
     computer.pullSignal()
-  end
 end
-
-panic("Filesystem and loading Init is not yet implemented(Kernel not fully usable yet)")
