@@ -11,8 +11,15 @@ local component = component or require('component')
 local computer = computer or require('computer')
 local unicode = unicode or require('unicode')
 
+local file = computer.getBootAddress()
 local gpu = component.list("gpu")()
 local screen = component.list("screen")()
+
+-- Set up variables
+cursorPos = {
+    x = 1,
+    y = 1
+}
 
 -- [[ Low-level GPU function from a very early version of OCLinux ]]
 function gpuInvoke(op, arg, ...)
@@ -46,9 +53,26 @@ if gpu and screen then
 end
 -- [[ END OF GPU SECTION ]]
 
+function printStatus(...)
+    gpuInvoke("set", 1, cursorPos.y, tostring(...))
+    cursorPos.y = cursorPos.y + 1
+end
+
+function fs(op, arg, ...)
+    local r = component.invoke(file, op, arg, ...)
+    return r
+end
+
 -- Print out a test message
-gpuInvoke("set", 1, 1, "Nothing to see here....")
+printStatus("Welcome to OCLinux 1.0!")
+printStatus("Boot drive: "..computer.getBootAddress())
+printStatus("Boot drive space usage: "..fs("spaceUsed").." bytes out of "..fs("spaceTotal").." bytes")
+printStatus("Listing connected components:")
+for address,type in component.list() do
+    printStatus("    "..address.."  "..type)
+end
 -- Halt the system, everything should be ok if there is no BSoD
+printStatus("SYSTEM HALTED!")
 while true do
     computer.pullSignal()
 end
