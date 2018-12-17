@@ -2,9 +2,9 @@
 -- Clean start is always gud for your health ;)
 _G.boot_invoke = nil
 -- Kernel metadata
-_G._OSNAME = "OCLinux"
-_G._OSVER = "1.0"
-_G._OSVERSION = _OSNAME.." ".._OSVER
+_G._KERNELNAME = "OCLinux"
+_G._KERNELVER = "1.0"
+_G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
 
 -- Fetch some important goodies
 local component = component or require('component')
@@ -54,23 +54,46 @@ end
 -- [[ END OF GPU SECTION ]]
 
 function printStatus(...)
-    gpuInvoke("set", 1, cursorPos.y, tostring(...))
-    cursorPos.y = cursorPos.y + 1
+    for i in string.gmatch(tostring(...), "([^\r\n]+)") do
+        gpuInvoke("set", cursorPos.x, cursorPos.y, tostring(i))
+        cursorPos.x = 1
+        cursorPos.y = cursorPos.y + 1
+    end
+    -- cursorPos.y = cursorPos.y + 1
 end
 
+function writeStatus(...)
+    for i in string.gmatch(tostring(...), "([^\r\n]+)") do
+        gpuInvoke("set", cursorPos.x, cursorPos.y, tostring(i))
+        cursorPos.x = string.len(...) + 1
+    end
+    -- cursorPos.y = cursorPos.y + 1
+end
+
+-- A very low level filesystem controller
 function fs(op, arg, ...)
     local r = component.invoke(file, op, arg, ...)
     return r
 end
 
--- Print out a test message
-printStatus("Welcome to OCLinux 1.0!")
-printStatus("Boot drive: "..computer.getBootAddress())
-printStatus("Boot drive space usage: "..fs("spaceUsed").." bytes out of "..fs("spaceTotal").." bytes")
-printStatus("Listing connected components:")
-for address,type in component.list() do
-    printStatus("    "..address.."  "..type)
+function execInit(init)
+    writeStatus("Looking for init \""..init.."\"....    ")
+    if fs("exists", init) then
+        printStatus("init found!")
+        initHandle = fs("open", init, "r")
+        initSize = fs("size", init)
+        initCode = fs("read", initHandle, initSize)
+        load(initCode)()
+    else
+        printStatus("Not here")
+    end
 end
+
+-- A Lua version of the kernel loading code from the Wiki pae of
+-- kernel panic
+if not execInit("/sbin/init.lua") and not execInit("/etc/init.lua") and not execInit("/bin/init.lua") then
+end
+
 -- Halt the system, everything should be ok if there is no BSoD
 printStatus("SYSTEM HALTED!")
 while true do
