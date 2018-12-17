@@ -11,7 +11,7 @@ local component = component or require('component')
 local computer = computer or require('computer')
 local unicode = unicode or require('unicode')
 
-local file = computer.getBootAddress()
+local bootDrive = computer.getBootAddress()
 local gpu = component.list("gpu")()
 local screen = component.list("screen")()
 
@@ -72,7 +72,7 @@ end
 
 -- A very low level filesystem controller
 function fs(op, arg, ...)
-    local r = component.invoke(file, op, arg, ...)
+    local r = component.invoke(bootDrive, op, arg, ...)
     return r
 end
 
@@ -83,10 +83,25 @@ function execInit(init)
         initHandle = fs("open", init, "r")
         initSize = fs("size", init)
         initCode = fs("read", initHandle, initSize)
-        load(initCode)()
+        load(initCode, "/boot/kernel/OCLinux.lua", _G)()
+        return true
     else
         printStatus("Not here")
     end
+end
+
+function panic(reason)
+    if not reason then
+        reason = "No reason specified"
+    end
+    printStatus("Kernel panic: "..reason)
+    printStatus("System halted")
+    computer.beep(1000, .5)
+    computer.beep(1000, .5)
+    computer.beep(1000, 1)
+    while true do
+        computer.pullSignal()
+    end    
 end
 
 -- A Lua version of the kernel loading code from the Wiki pae of
@@ -95,7 +110,4 @@ if not execInit("/sbin/init.lua") and not execInit("/etc/init.lua") and not exec
 end
 
 -- Halt the system, everything should be ok if there is no BSoD
-printStatus("SYSTEM HALTED!")
-while true do
-    computer.pullSignal()
-end
+panic()
