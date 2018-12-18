@@ -9,8 +9,8 @@ function printInfo(message)
     gpuInvoke("setForeground", 0x00ff00)
     writeStatus("INFO")
     gpuInvoke("setForeground", 0xffffff)
-    writeStatus(" ] "..message)
-    
+    writeStatus(" ] ")
+    writeStatus(message)
 end
 
 printStatus("Welcome to OCLinux !")

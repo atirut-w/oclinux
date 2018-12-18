@@ -79,11 +79,11 @@ end
 function execInit(init)
     writeStatus("Looking for init \""..init.."\"....    ")
     if fs("exists", init) then
-        printStatus("init found!")
+        printStatus("Init found!")
         initHandle = fs("open", init, "r")
         initSize = fs("size", init)
         initCode = fs("read", initHandle, initSize)
-        load(initCode, "/boot/kernel/OCLinux.lua", _G)()
+        load(initCode)()
         return true
     else
         printStatus("Not here")
@@ -107,7 +107,8 @@ end
 -- A Lua version of the kernel loading code from the Wiki pae of
 -- kernel panic
 if not execInit("/sbin/init.lua") and not execInit("/etc/init.lua") and not execInit("/bin/init.lua") then
+    panic("Init not found")
 end
 
 -- Halt the system, everything should be ok if there is no BSoD
-panic()
+panic("Init returned")
