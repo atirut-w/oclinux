@@ -5,15 +5,16 @@ _G.boot_invoke = nil
 _G._KERNELNAME = "OCLinux"
 _G._KERNELVER = "1.0"
 _G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
+_G.kernel = {}
 
 -- Fetch some important goodies
-local component = component or require('component')
-local computer = computer or require('computer')
-local unicode = unicode or require('unicode')
+component = component or require('component')
+computer = computer or require('computer')
+unicode = unicode or require('unicode')
 
-local bootDrive = computer.getBootAddress()
-local gpu = component.list("gpu")()
-local screen = component.list("screen")()
+_G.bootDrive = computer.getBootAddress()
+_G.gpu = component.list("gpu")()
+_G.screen = component.list("screen")()
 
 -- Set up variables
 cursorPos = {
@@ -71,19 +72,26 @@ function writeStatus(...)
 end
 
 -- A very low level filesystem controller
-function fs(op, arg, ...)
-    local r = component.invoke(bootDrive, op, arg, ...)
-    return r
+
+function fs(drive, op, arg, ...)
+    return component.invoke(drive, op, arg, ...)
 end
 
+function readFile(drive, file)
+    fileHandle = fs(drive, "open", file, "r")
+    fileSize = fs(drive, "size", file)
+    fileContent = fs(drive, "read", fileHandle, fileSize)
+    return fileContent
+end
+
+--Declare kernel specific functions
+kernel = {}
 function execInit(init)
     writeStatus("Looking for init \""..init.."\"....    ")
-    if fs("exists", init) then
+    if fs(bootDrive, "exists", init) then
         printStatus("Init found!")
-        initHandle = fs("open", init, "r")
-        initSize = fs("size", init)
-        initCode = fs("read", initHandle, initSize)
-        load(initCode)()
+        initC = readFile(bootDrive, init)
+        load(initC)()
         return true
     else
         printStatus("Not here")
