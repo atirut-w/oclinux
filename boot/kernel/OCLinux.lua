@@ -3,18 +3,18 @@
 _G.boot_invoke = nil
 -- Kernel metadata
 _G._KERNELNAME = "OCLinux"
-_G._KERNELVER = "1.0"
+_G._KERNELVER = "0.1 beta"
 _G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
-_G.kernel = {}
 
 -- Fetch some important goodies
 component = component or require('component')
 computer = computer or require('computer')
 unicode = unicode or require('unicode')
 
-_G.bootDrive = computer.getBootAddress()
-_G.gpu = component.list("gpu")()
-_G.screen = component.list("screen")()
+bootDrive = computer.getBootAddress()
+gpu = component.gpu
+screen = component.list("screen")()
+
 
 -- Set up variables
 cursorPos = {
@@ -22,7 +22,7 @@ cursorPos = {
     y = 1
 }
 
--- [[ Low-level GPU function from a very early version of OCLinux ]]
+-- [[ Initialize the display ]]
 function gpuInvoke(op, arg, ...)
     local res = {}
     local n = 1
@@ -52,6 +52,7 @@ if gpu and screen then
     gpuInvoke("fill", res)
     cls = function()gpuInvoke("fill", res)end
 end
+
 -- [[ END OF GPU SECTION ]]
 
 function printStatus(...)
@@ -91,7 +92,7 @@ function execInit(init)
     if fs(bootDrive, "exists", init) then
         printStatus("Init found!")
         initC = readFile(bootDrive, init)
-        load(initC)()
+        load(initC, nil, nil, _G)()
         return true
     else
         printStatus("Not here")
