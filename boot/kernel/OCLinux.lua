@@ -12,7 +12,7 @@ computer = computer or require('computer')
 unicode = unicode or require('unicode')
 
 bootDrive = computer.getBootAddress()
-gpu = component.gpu
+gpu = component.list("gpu")()
 screen = component.list("screen")()
 
 
