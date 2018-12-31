@@ -3,7 +3,7 @@
 _G.boot_invoke = nil
 -- Kernel metadata
 _G._KERNELNAME = "OCLinux"
-_G._KERNELVER = "0.1 beta"
+_G._KERNELVER = "0.2.1 beta"
 _G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
 
 -- Fetch some important goodies
@@ -15,12 +15,12 @@ bootDrive = computer.getBootAddress()
 gpu = component.list("gpu")()
 screen = component.list("screen")()
 
-
 -- Set up variables
 cursorPos = {
     x = 1,
     y = 1
 }
+screenResolution = {}
 
 -- [[ Initialize the display ]]
 function gpuInvoke(op, arg, ...)
@@ -52,11 +52,20 @@ if gpu and screen then
     gpuInvoke("fill", res)
     cls = function()gpuInvoke("fill", res)end
 end
+screenResolution.w, screenResolution.h = gpuInvoke("getResolution")
 
 -- [[ END OF GPU SECTION ]]
 
 function printStatus(...)
     for i in string.gmatch(tostring(...), "([^\r\n]+)") do
+        if cursorPos.y > h then
+            -- Why the hell did they use Cartesian Coordinate? WHY?!
+            gpuInvoke("copy", 1, 2, w, h-1, 0, -1)
+            gpuInvoke("setForeground", 0x000000)
+            gpuInvoke("fill", 1, h, w, 1, " ")
+            gpuInvoke("setForeground", 0xFFFFFF)
+            cursorPos.y = cursorPos.y - 1
+        end
         gpuInvoke("set", cursorPos.x, cursorPos.y, tostring(i))
         cursorPos.x = 1
         cursorPos.y = cursorPos.y + 1
@@ -86,7 +95,6 @@ function readFile(drive, file)
 end
 
 --Declare kernel specific functions
-kernel = {}
 function execInit(init)
     writeStatus("Looking for init \""..init.."\"....    ")
     if fs(bootDrive, "exists", init) then
@@ -110,13 +118,13 @@ function panic(reason)
     computer.beep(1000, 1)
     while true do
         computer.pullSignal()
-    end    
+    end
 end
 
--- A Lua version of the kernel loading code from the Wiki pae of
+-- A Lua version of the kernel loading code from the Wiki page of
 -- kernel panic
 if not execInit("/sbin/init.lua") and not execInit("/etc/init.lua") and not execInit("/bin/init.lua") then
-    panic("Init not found")
+    panic("Init not found. You are on your own now, good luck!")
 end
 
 -- Halt the system, everything should be ok if there is no BSoD
