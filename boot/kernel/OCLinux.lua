@@ -70,7 +70,6 @@ function printStatus(...)
         cursorPos.x = 1
         cursorPos.y = cursorPos.y + 1
     end
-    -- cursorPos.y = cursorPos.y + 1
 end
 
 function writeStatus(...)
@@ -78,11 +77,9 @@ function writeStatus(...)
         gpuInvoke("set", cursorPos.x, cursorPos.y, tostring(i))
         cursorPos.x = string.len(...) + 1
     end
-    -- cursorPos.y = cursorPos.y + 1
 end
 
 -- A very low level filesystem controller
-
 function fs(drive, op, arg, ...)
     return component.invoke(drive, op, arg, ...)
 end
@@ -112,6 +109,8 @@ function panic(reason)
         reason = "No reason specified"
     end
     printStatus("Kernel panic: "..reason)
+    printStatus("Kernel version: ".._KERNELVER)
+    printStatus("System uptime: "..computer.uptime())
     printStatus("System halted")
     computer.beep(1000, .5)
     computer.beep(1000, .5)
@@ -121,7 +120,8 @@ function panic(reason)
     end
 end
 
--- A Lua version of the kernel loading code from the Wiki page of
+-- [[ YOU BETTER LEFT THESE PARTS UNTOUCHED ]]
+-- A Lua version of the kernel loading code from the Wiki page of the
 -- kernel panic
 if not execInit("/sbin/init.lua") and not execInit("/etc/init.lua") and not execInit("/bin/init.lua") then
     panic("Init not found. You are on your own now, good luck!")
@@ -129,3 +129,4 @@ end
 
 -- Halt the system, everything should be ok if there is no BSoD
 panic("Init returned")
+-- [[ SomeOnE toUCHA My coDe! ]]
