@@ -1,5 +1,6 @@
 -- Init version
 _INITVER = "1.0"
+local filesystem = load(readFile(computer.getBootAddress(), "boot/kernel_modules/filesystem.lua"), nil, nil, _G)() -- load filesystem API
 
 function printInfo(...)
     writeStatus("[ INFO ] ")
@@ -15,6 +16,7 @@ function printError(...)
     writeStatus("[ ERROR! ] ")
     printStatus(...)
 end
+filesystem.mount("/", component.proxy(computer.getBootAddress()))
 printStatus([[ (o<
 //\
 V_/]])

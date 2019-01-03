@@ -1,10 +1,11 @@
 -- OCLinux kernel by WattanaGaming
 -- Clean start is always gud for your health ;)
 _G.boot_invoke = nil
+
 -- Kernel metadata
 _G._KERNELNAME = "OCLinux"
-_G._KERNELVER = "0.2.1 beta"
-_G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
+_G._KERNELVER = "0.3.0 beta"
+_G._KERNELVERSION = _KERNELNAME .. " " .. _KERNELVER
 
 -- Fetch some important goodies
 component = component or require('component')
@@ -13,7 +14,7 @@ unicode = unicode or require('unicode')
 
 bootDrive = computer.getBootAddress()
 gpu = component.list("gpu")()
-screen = component.list("screen")()
+screen = nil
 
 -- Set up variables
 cursorPos = {
@@ -22,18 +23,25 @@ cursorPos = {
 }
 screenResolution = {}
 
--- [[ Initialize the display ]]
+-- Bind screen to GPU
+for address in component.list("screen") do
+    if #component.invoke(address, "getKeyboards") > 0 then
+        screen = address
+    end
+end
+if not screen then
+    screen = component.list("screen")()
+end
+component.invoke(gpu, "bind", screen)
+
+-- Note to WattanaGaming: binding the screen at each operations kinda allow for multi-screen but
+-- slows down a lot the graphics operation.
 function gpuInvoke(op, arg, ...)
     local res = {}
-    local n = 1
-    for address in component.list('screen') do
-        component.invoke(gpu, "bind", address)
-        if type(arg) == "table" then
-            res[#res + 1] = {component.invoke(gpu, op, table.unpack(arg[n]))}
-        else
-            res[#res + 1] = {component.invoke(gpu, op, arg, ...)}
-        end
-        n = n + 1
+    if type(arg) == "table" then
+        res[#res + 1] = {component.invoke(gpu, op, table.unpack(arg[1]))}
+    else
+        res[#res + 1] = {component.invoke(gpu, op, arg, ...)}
     end
     return res
 end
@@ -108,16 +116,19 @@ function panic(reason)
     if not reason then
         reason = "No reason specified"
     end
-    printStatus("Kernel panic: "..reason)
-    printStatus("Kernel version: ".._KERNELVER)
-    printStatus("System uptime: "..computer.uptime())
-    printStatus("System halted")
-    computer.beep(1000, .5)
-    computer.beep(1000, .5)
-    computer.beep(1000, 1)
+    gpuInvoke("setForeground", 0xFF0000) -- error color ;)
+    printStatus("Kernel Panic!!")
+    printStatus("    Reason        : " .. reason)
+    printStatus("    Kernel version: " .. _KERNELVER)
+    printStatus("    System uptime : " .. computer.uptime())
+    cursorPos.y = cursorPos.y + 1 -- break line
+    --printStatus("Your computer will shutdown after the long beep")
+    computer.beep(1000, 0.75)
+    -- Re-add shutdown when kernel is ready for release
     while true do
         computer.pullSignal()
     end
+    --computer.shutdown()
 end
 
 -- [[ YOU BETTER LEFT THESE PARTS UNTOUCHED ]]
@@ -129,4 +140,3 @@ end
 
 -- Halt the system, everything should be ok if there is no BSoD
 panic("Init returned")
--- [[ SomeOnE toUCHA My coDe! ]]
