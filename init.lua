@@ -1,9 +1,10 @@
-_G._OSVERSION = "OpenLoader 0.3"
+
 local component = component or require('component')
 local computer = computer or require('computer')
 local unicode = unicode or require('unicode')
 
 local eeprom = component.list("eeprom")()
+
 computer.getBootAddress = function()
   return component.invoke(eeprom, "getData")
 end
@@ -15,45 +16,29 @@ local gpu = component.list("gpu")()
 local w, h
 
 local screen = component.list('screen')()
+-- Bind gpu to one screen for performance
+component.invoke(gpu, "bind", screen, true)
+local w, h = component.invoke(gpu, "maxResolution")
+component.invoke(gpu, "setResolution", w, h)
+local gpuProxy = component.proxy(gpu)
 
-local function gpucast(op, arg, ...)
-    local res = {}
-    local n = 1
-    for address in component.list('screen') do
-        component.invoke(gpu, "bind", address)
-        if type(arg) == "table" then
-            res[#res + 1] = {component.invoke(gpu, op, table.unpack(arg[n]))}
-        else
-            res[#res + 1] = {component.invoke(gpu, op, arg, ...)}
-        end
-        n = n + 1
-    end
-    return res
-end
-
-local cls = function()end
+local clearScreen = function()end
 if gpu and screen then
     --component.invoke(gpu, "bind", screen)
     w, h = component.invoke(gpu, "getResolution")
-    local res = gpucast("getResolution")
-    gpucast("setResolution", res)
-    gpucast("setBackground", 0x000000)
-    gpucast("setForeground", 0xFFFFFF)
-    for _, e in ipairs(res)do
-        table.insert(e, 1, 1)
-        table.insert(e, 1, 1)
-        e[#e+1] = " "
-    end
-    gpucast("fill", res)
-    cls = function()gpucast("fill", res)end
+    gpuProxy.setBackground(0x000000)
+    gpuProxy.setForeground(0xFFFFFF)
+    clearScreen = function()
+		gpuProxy.fill(1, 1, w, h, " ")
+	end
 end
 local y = 1
 local function status(msg)
     if gpu and screen then
-        gpucast("set", 1, y, msg)
+        gpuProxy.set(1, y, msg)
         if y == h then
-            gpucast("copy", 1, 2, w, h - 1, 0, -1)
-            gpucast("fill", 1, h, w, 1, " ")
+            gpuProxy.copy(1, 2, w, h - 1, 0, -1)
+            gpuProxy.fill(1, h, w, 1, " ")
         else
             y = y + 1
         end
@@ -61,7 +46,7 @@ local function status(msg)
 end
 
 local function loadfile(fs, file)
-    --status("> " .. file)
+    status("> " .. file)
     local handle, reason = component.invoke(fs,"open",file)
     if not handle then
         error(reason)
@@ -93,9 +78,11 @@ local function dofile(fs, file)
 end
 
 local function boot(kernel)
-    status("BOOTING")
-    _G.computer.getBootAddress = function()return kernel.address end
-    cls()
+    status("Booting kernel..")
+    _G.computer.getBootAddress = function()
+		return kernel.address
+	end
+    clearScreen()
     dofile(kernel.address, kernel.fpx .. kernel.file)
 end
 
@@ -104,9 +91,7 @@ local function labelText(fs)
   if lbl then return " ('"..lbl.."')" else return "" end
 end
 
-status(_OSVERSION)
-status("Select what to boot:")
-
+status("OpenLoader 0.3.1")
 local osList = {}
 
 for fs in component.list("filesystem") do
@@ -128,7 +113,6 @@ for fs in component.list("filesystem") do
         status(tostring(#osList).."."..osName.." from "..(fs:sub(1,3))..labelText(fs))
     end
 end
-status("Select os: ")
 if #osList == 1 then
     boot(osList[1])
 end
@@ -136,6 +120,7 @@ if #osList == 0 then
     error("No OS found")
     while true do computer.pullSignal() end
 end
+status("Select OS:")
 while true do
     local sig = {computer.pullSignal()}
     if sig[1] == "key_down" then
