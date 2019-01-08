@@ -17,6 +17,7 @@ function printError(...)
     printStatus(...)
 end
 filesystem.mount("/", component.proxy(computer.getBootAddress()))
+lib.mount()
 printStatus([[ (o<
 //\
 V_/]])

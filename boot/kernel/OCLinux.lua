@@ -88,6 +88,7 @@ function writeStatus(...)
 end
 
 -- A very low level filesystem controller
+-- that is now useless with "filesystem" API
 function fs(drive, op, arg, ...)
     return component.invoke(drive, op, arg, ...)
 end
@@ -105,7 +106,14 @@ function execInit(init)
     if fs(bootDrive, "exists", init) then
         printStatus("Init found!")
         initC = readFile(bootDrive, init)
-        load(initC, nil, nil, _G)()
+        local v, err = pcall(function()
+			load(initC, "=" .. init, nil, _G)()
+		end)
+		if not v then
+			gpuInvoke("setForeground", 0xFF0000) -- some unstandard way to do error
+			printStatus(err)
+			panic("An error occured during execution")
+		end
         return true
     else
         printStatus("Not here")
