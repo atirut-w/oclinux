@@ -94,9 +94,18 @@ function fs(drive, op, arg, ...)
 end
 
 function readFile(drive, file)
-    fileHandle = fs(drive, "open", file, "r")
-    fileSize = fs(drive, "size", file)
-    fileContent = fs(drive, "read", fileHandle, fileSize)
+    local fileHandle = fs(drive, "open", file, "r")
+    local fileSize = fs(drive, "size", file)
+    local fileContent = ""
+    local tmp = fileSize
+	local readed = ""
+    while true do
+		readed = fs(drive, "read", fileHandle, 2048)
+		if readed == nil then
+			break
+		end
+        fileContent = fileContent .. readed
+    end
     return fileContent
 end
 

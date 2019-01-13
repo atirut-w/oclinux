@@ -48,4 +48,5 @@ end
 
 printStatus("Loading Video RAM..")
 vram.setViewport(105, 33)
-printStatus("Size: " .. vram.getSize())
+printStatus("VRAM Size: " .. vram.getSize())
+printStatus(filesystem.exists("/dev/hda/init.lua"))

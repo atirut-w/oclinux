@@ -6,48 +6,56 @@ local lib = {}
 local mtab = {name="", children={}, links={}}
 local fstab = {}
 
+function table.maxn(tab)
+	local i = 0
+	for k, v in pairs(tab) do
+		i = math.max(i, k)
+	end
+	return i
+end
+
 function lib.segments(path)
-    local parts = {}
-    for part in path:gmatch("[^\\/]+") do
-        local current, up = part:find("^%.?%.$")
-        if current then
-            if up == 2 then
-                table.remove(parts)
-            end
-        else
-            table.insert(parts, part)
-        end
-    end
-    return parts
+	local parts = {}
+	for part in path:gmatch("[^\\/]+") do
+		local current, up = part:find("^%.?%.$")
+		if current then
+			if up == 2 then
+				table.remove(parts)
+			end
+		else
+			table.insert(parts, part)
+		end
+	end
+	return parts
 end
 
 local function hasMountPoint(path)
-    return lib.getNode(path) ~= nil
+	return lib.getNode(path) ~= nil
 end
 
 function lib.canonical(path)
   local result = table.concat(segments(path), "/")
   if unicode.sub(path, 1, 1) == "/" then
-    return "/" .. result
+	return "/" .. result
   else
-    return result
+	return result
   end
 end
 
 function lib.concat(...)
   local set = table.pack(...)
   for index, value in ipairs(set) do
-    checkArg(index, value, "string")
+	checkArg(index, value, "string")
   end
   return lib.canonical(table.concat(set, "/"))
 end
 
 
 function lib.mount(path, fs)
-    if hasMountPoint(path) then
-        error(path .. " is arleady mounted")
-    end
-    table.insert(filesystems, {path, fs})
+	if hasMountPoint(path) then
+		error(path .. " is arleady mounted")
+	end
+	table.insert(filesystems, {path, fs})
 end
 
 local function localPath(node, path)
@@ -61,10 +69,10 @@ function lib.getDrives(automount)
 	local i = 0
 	for k, v in pairs(component.list("filesystem")) do
 		-- uncorrect naming due to not knowing if it's floppy or disk drive
-		table.insert(tab, "dev/" .. "hd".. string.char(string.byte('a') + i))
+		table.insert(tab, "/dev/" .. "hd".. string.char(string.byte('a') + i))
 		if automount then
 			if not lib.contains(component.proxy(v)) then
-				lib.mount("dev/" .. "hd".. string.char(string.byte('a') + i), component.proxy(v))
+				lib.mount("/dev/" .. "hd".. string.char(string.byte('a') + i), component.proxy(v))
 			end
 		end
 		i = i + 1
@@ -74,6 +82,9 @@ end
 
 function lib.exists(path)
 	local node = lib.findNode(path)
+	if node == nil then
+		return false
+	end
 	local lp = localPath(node, path)
 	return node.exists(lp)
 end
@@ -81,6 +92,9 @@ end
 -- Also has compatibility for older versions
 function lib.isReadOnly(path)
 	local node = lib.findNode(path)
+	if node == nil then
+		return false
+	end
 	local lp = localPath(node, path)
 	if node.isReadOnly then
 		return node.isReadOnly(lp)
@@ -114,42 +128,47 @@ end
 
 function lib.size(path)
 	local node = lib.findNode(path)
+	if node == nil then
+		return -1
+	end
 	local lp = localPath(node, path)
 	return node.size(lp)
 end
 
 function lib.findNode(path)
-    local lastPath = ""
-    local lastNode = {}
-    local seg = lib.segments(path)
-    for k, v in pairs(seg) do
-        if v < table.getn(seg) then
-            lastPath = lastPath .. v .. "/"
-        else
-            lastPath = lastPath .. v
-        end
-        local node = lib.getNode(lastPath)
-        if node ~= nil then
-            lastNode = node
-        end
-    end
-    return lastNode
+	local lastPath = ""
+	local lastNode = nil
+	local seg = lib.segments(path)
+	for k, v in pairs(seg) do
+		if k < table.maxn(seg) then
+			lastPath = lastPath .. v .. "/"
+		else
+			lastPath = lastPath .. v
+		end
+		local node = lib.getNode(lastPath)
+		if node ~= nil then
+			lastNode = node
+			node.path = lastPath
+		end
+	end
+	return lastNode
 end
 
 function lib.getNode(mountPath)
-    for k, v in pairs(filesystems) do
-        local p = v[1]
-        if p == mountPath then -- if is same path
+	for k, v in pairs(filesystems) do
+		local p = v[1]
+		if p == mountPath then -- if is same path
 			p.path = mountPath
-            return p
-        end
-    end
-    return nil
+			--printInfo(p.path)
+			return p
+		end
+	end
+	return nil
 end
 
 function lib.contains(node)
 	for k, v in pairs(filesystems) do
-        local p = v[2]
+		local p = v[2]
 		if p == node then
 			return true
 		end
@@ -158,12 +177,12 @@ function lib.contains(node)
 end
 
 function lib.umount(path)
-    for k, v in pairs(filesystems) do
-        local p = v[1]
-        if p == path then -- if is same path
-            table.remove(filesystems, k)
-        end
-    end
+	for k, v in pairs(filesystems) do
+		local p = v[1]
+		if p == path then -- if is same path
+			table.remove(filesystems, k)
+		end
+	end
 end
 
 return lib
