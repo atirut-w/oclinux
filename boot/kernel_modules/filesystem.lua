@@ -1,5 +1,6 @@
 -- Simple filesystem API with multiple mount points
 local unicode = unicode or require("unicode")
+local component = component or require("component")
 local filesystems = {}
 local lib = {}
 local mtab = {name="", children={}, links={}}
@@ -49,15 +50,44 @@ function lib.mount(path, fs)
     table.insert(filesystems, {path, fs})
 end
 
+local function localPath(node, path)
+	local localPath = path:gsub(node.path .. "/", "")
+	return localPath
+end
+
+function lib.getDrives()
+	local tab = {}
+	-- TODO add support for drives when an standardized unmanaged filesystem is made for OC
+	local i = 0
+	for k, v in pairs(component.list("filesystem")) do
+		-- uncorrect naming due to not knowing if it's floppy or disk drive
+		table.insert(tab, "dev/" .. "hd".. string.char(string.byte('a') + i))
+		i = i + 1
+	end
+	return tab
+end
+
+function lib.exists(path)
+	local node = lib.findNode(path)
+	local lp = localPath(node, path)
+	return node.exists(lp)
+end
+
+function lib.getFile(path)
+	local node = lib.findNode(path)
+	local lp = localPath(node, path)
+	
+end
+
 function lib.findNode(path)
     local lastPath = ""
     local lastNode = {}
     local seg = lib.segments(path)
     for k, v in pairs(seg) do
         if v < table.getn(seg) then
-            lastPath = lastPath .. k .. "/"
+            lastPath = lastPath .. v .. "/"
         else
-            lastPath = lastPath .. k
+            lastPath = lastPath .. v
         end
         local node = lib.getNode(lastPath)
         if node ~= nil then
@@ -71,6 +101,7 @@ function lib.getNode(mountPath)
     for k, v in pairs(filesystems) do
         local p = v[1]
         if p == mountPath then -- if is same path
+			p.path = mountPath
             return p
         end
     end

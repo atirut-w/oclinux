@@ -1,7 +1,16 @@
 -- Init version
 _INITVER = "1.0"
-local filesystem = load(readFile(computer.getBootAddress(), "boot/kernel_modules/filesystem.lua"), nil, nil, _G)() -- load filesystem API
+local fslib, err = load(readFile(computer.getBootAddress(), "boot/kernel_modules/filesystem.lua"), "=filesystem.lua", nil, _G) -- load filesystem API
+local filesystem
 
+local vlib, arr = load(readFile(computer.getBootAddress(), "lib/vram.lua"), "=vram.lua", nil, _G) -- load Video RAM API
+local vram
+if fslib ~= nil then
+	filesystem = fslib()
+end
+if vlib ~= nil then
+	vram = vlib()
+end
 function printInfo(...)
     writeStatus("[ INFO ] ")
     printStatus(...)
@@ -16,8 +25,13 @@ function printError(...)
     writeStatus("[ ERROR! ] ")
     printStatus(...)
 end
+if err ~= nil then -- unable to load filesystem api
+	printError(err)
+end
+if arr ~= nil then
+	printError(err)
+end
 filesystem.mount("/", component.proxy(computer.getBootAddress()))
-lib.mount()
 printStatus([[ (o<
 //\
 V_/]])
@@ -27,3 +41,11 @@ printStatus("Init version: ".._INITVER)
 printStatus("Boot drive space usage: "..fs(bootDrive, "spaceUsed").."/"..fs(bootDrive, "spaceTotal").." bytes available")
 printStatus("Memory: "..computer.freeMemory().."/"..computer.totalMemory().." bytes available")
 
+printStatus("Drives:")
+for k, v in pairs(filesystem.getDrives()) do
+	printStatus(v)
+end
+
+printStatus("Loading Video RAM..")
+vram.setViewport(105, 33)
+printStatus("Size: " .. vram.getSize())
