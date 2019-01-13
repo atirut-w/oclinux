@@ -42,7 +42,7 @@ printStatus("Boot drive space usage: "..fs(bootDrive, "spaceUsed").."/"..fs(boot
 printStatus("Memory: "..computer.freeMemory().."/"..computer.totalMemory().." bytes available")
 
 printStatus("Drives:")
-for k, v in pairs(filesystem.getDrives()) do
+for k, v in pairs(filesystem.getDrives(true)) do -- also auto-mount drives to dev/hd_
 	printStatus(v)
 end
 

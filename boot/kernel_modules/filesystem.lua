@@ -55,13 +55,18 @@ local function localPath(node, path)
 	return localPath
 end
 
-function lib.getDrives()
+function lib.getDrives(automount)
 	local tab = {}
 	-- TODO add support for drives when an standardized unmanaged filesystem is made for OC
 	local i = 0
 	for k, v in pairs(component.list("filesystem")) do
 		-- uncorrect naming due to not knowing if it's floppy or disk drive
 		table.insert(tab, "dev/" .. "hd".. string.char(string.byte('a') + i))
+		if automount then
+			if not lib.contains(component.proxy(v)) then
+				lib.mount("dev/" .. "hd".. string.char(string.byte('a') + i), component.proxy(v))
+			end
+		end
 		i = i + 1
 	end
 	return tab
@@ -73,10 +78,44 @@ function lib.exists(path)
 	return node.exists(lp)
 end
 
-function lib.getFile(path)
+-- Also has compatibility for older versions
+function lib.isReadOnly(path)
 	local node = lib.findNode(path)
 	local lp = localPath(node, path)
-	
+	if node.isReadOnly then
+		return node.isReadOnly(lp)
+	else
+		return false
+	end
+end
+
+function lib.getFile(path, mode)
+	local node = lib.findNode(path)
+	local lp = localPath(node, path)
+	local file = {}
+	file.handle = node.open(lp, mode)
+	file.seek = function(whence, offset)
+		return node.seek(file.handle, whence, offset)
+	end
+	file.write = function(value)
+		return node.write(file.handle, value)
+	end
+	file.read = function(amount)
+		return node.read(file.handle, amount)
+	end
+	file.size = function()
+		return node.size(lp)
+	end
+	file.close = function()
+		node.close(file.handle)
+	end
+	return file
+end
+
+function lib.size(path)
+	local node = lib.findNode(path)
+	local lp = localPath(node, path)
+	return node.size(lp)
 end
 
 function lib.findNode(path)
@@ -106,6 +145,16 @@ function lib.getNode(mountPath)
         end
     end
     return nil
+end
+
+function lib.contains(node)
+	for k, v in pairs(filesystems) do
+        local p = v[2]
+		if p == node then
+			return true
+		end
+	end
+	return false
 end
 
 function lib.umount(path)
