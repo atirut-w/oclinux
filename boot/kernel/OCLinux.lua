@@ -140,12 +140,9 @@ function kernel.panic(reason)
     --computer.shutdown()
 end
 
-print(readFile(bootFs, "/boot/kernel/OCLinux.lua"))
-
 if not kernel.execInit("/sbin/init.lua") and not kernel.execInit("/etc/init.lua") and not kernel.execInit("/bin/init.lua") then
     kernel.panic("Init not found. You are on your own now, good luck!")
 end
 
 -- Halt the system, everything should be ok if there is no BSoD
 kernel.panic("Init returned")
-
