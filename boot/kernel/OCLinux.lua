@@ -50,16 +50,23 @@ end
 
 -- Start of the filesystem section
 fs = {}
+fs.lowLevel = component.proxy(computer.getBootAddress())
+fs.mountpoints = {}
+
+function fs.mount(filesystem, mountpoint)
+
+end
+
 function fs.open(filesystem, file, mode)
-    return component.invoke(filesystem, "open", file, mode)
+    return fs.lowLevel.open(file, mode)
 end
 
 function fs.close(filesystem, handle)
-    return component.invoke(filesystem, "close", handle)
+    return fs.lowLevel.close(handle)
 end
 
 function fs.exists(filesystem, file)
-    return component.invoke(filesystem, "exists", file)
+    return fs.lowLevel.exists(file)
 end
 
 function fs.read(filesystem, handle)
@@ -67,7 +74,7 @@ function fs.read(filesystem, handle)
     local tmp = fileSize
     local readed = ""
     while true do
-        readed = component.invoke(filesystem, "read", handle, 2048)
+        readed = fs.lowLevel.read(handle, 2048)
         if readed == nil then
             break
         end
@@ -78,6 +85,9 @@ end
 
 -- Start of the kernel specific section
 kernel = {}
+
+-- Get the boot time until kernel in case there is a bootloader delay
+kernel.bootTime = computer.uptime()
 -- Get the boot address
 kernel.bootFs = computer.getBootAddress()
 
@@ -92,7 +102,6 @@ function kernel.execInit(init)
             load(initC, "=" .. init, nil, _G)()
         end)
         if not v then
-            gpuInvoke("setForeground", 0xFF0000) -- some unstandard way to do error
             kernel.panic("An error occured during execution of "..init, err)
         end
         return true
@@ -110,9 +119,9 @@ function kernel.panic(reason, traceback)
     --  Zenith's tweak of the kernel panic error'
     print("Kernel Panic!!")
     print("  Reason: " .. reason)
-    print("  Stack traceback: "..traceback)
+    print("  Traceback: "..traceback)
     print("  Kernel version: ".. _KERNELVER)
-    print("  System uptime: ".. computer.uptime())
+    print("  System uptime: ".. computer.uptime() - kernel.bootTime)
     print("System halted.")
     computer.beep(1000, 0.75)
     while true do

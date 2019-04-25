@@ -2,25 +2,25 @@
 _INITVER = "1.0"
 
 function printInfo(...)
-    writeStatus("[ INFO ] ")
-    printStatus(...)
+    write("[ INFO ] ")
+    print(...)
 end
 
 function printWarning(...)
-    writeStatus("[ WARNING ] ")
-    printStatus(...)
+    write("[ WARNING ] ")
+    print(...)
 end
 
 function printError(...)
-    writeStatus("[ ERROR! ] ")
-    printStatus(...)
+    write("[ ERROR! ] ")
+    print(...)
 end
-printStatus([[ (o<
+print([[ (o<
 //\
-V_/]])
-printStatus("Welcome to OCLinux!")
-printStatus("Kernel version: ".._KERNELVER)
-printStatus("Init version: ".._INITVER)
-printStatus("Boot drive space usage: "..fs(bootDrive, "spaceUsed").."/"..fs(bootDrive, "spaceTotal").." bytes available")
-printStatus("Memory: "..computer.freeMemory().."/"..computer.totalMemory().." bytes available")
+V_/_]])
+print("Welcome to OCLinux!")
+print("Kernel version: ".._KERNELVER)
+print("Init version: ".._INITVER)
+print("Boot drive space usage: "..fs.lowLevel.spaceUsed().."/"..fs.lowLevel.spaceTotal().." bytes available")
+print("Memory: "..computer.freeMemory().."/"..computer.totalMemory().." bytes available")
 
