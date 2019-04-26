@@ -2,7 +2,7 @@
 -- Set up variables
 _G.boot_invoke = nil
 _G._KERNELNAME = "OCLinux"
-_G._KERNELVER = "0.2.3 beta"
+_G._KERNELVER = "0.2.4 beta"
 _G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
 
 -- Load up basic libraries
@@ -54,19 +54,52 @@ fs.lowLevel = component.proxy(computer.getBootAddress())
 fs.mountpoints = {}
 
 function fs.mount(filesystem, mountpoint)
-
+    fs.mountpoints[mountpoint] = filesystem
 end
 
-function fs.open(filesystem, file, mode)
-    return fs.lowLevel.open(file, mode)
+function fs.unmount(filesystem)
+    for mountpoint, mountrecord in ipairs(fs.mountpoints) do
+        if mountrecord == filesystem then
+            mountpoint = nil
+        end
+    end
+end
+
+function fs.findFilesystem(file)
+    -- Thanks to Z0idburg for providing the code
+    local matches = {}
+    for mountpoint, device in pairs(fs.mountpoints) do
+        if string.find(file, mountpoint) == 1 then 
+            table.insert(matches, mountpoint)
+        end
+    end
+    -- Now we figure out which one to use:
+    local target = ""
+    for _, mountpoint in ipairs(matches) do
+        if string.len(mountpoint) > string.len(target) then 
+            target = fs.mountpoints[mountpoint]
+        end
+    end
+
+    if target == "" then 
+        return "Error: no mountpoint found"
+    end
+    return target
+end
+
+function fs.open(file, mode)
+    local fs = component.proxy(fs.findFilesystem(file))
+    return fs.open(file, mode)
 end
 
 function fs.close(filesystem, handle)
-    return fs.lowLevel.close(handle)
+    local fs = component.proxy(fs.findFilesystem(file))
+    return fs.close(handle)
 end
 
 function fs.exists(filesystem, file)
-    return fs.lowLevel.exists(file)
+    local fs = component.proxy(fs.findFilesystem(file))
+    return fs.exists(file)
 end
 
 function fs.read(filesystem, handle)
@@ -95,8 +128,8 @@ function kernel.execInit(init)
     write("Looking for init \""..init.."\"....    ")
     if fs.exists(kernel.bootFs, init) then
         print("Init found!")
-        initHandle = fs.open(kernel.bootFs, init, "r")
-        initC = fs.read(kernel.bootFs, initHandle)
+        initHandle = fs.open(init, "r")
+        initC = fs.read(init, initHandle)
         -- Zenith's error detection
         local v, err = pcall(function()
             load(initC, "=" .. init, nil, _G)()
@@ -113,10 +146,11 @@ end
 function kernel.panic(reason, traceback)
     if not reason then
         reason = "Not specified"
-    elseif not traceback then
+    end
+    if not traceback then
         traceback = "None"
     end
-    --  Zenith's tweak of the kernel panic error'
+    --  Zenith's tweak of the kernel panic error
     print("Kernel Panic!!")
     print("  Reason: " .. reason)
     print("  Traceback: "..traceback)
@@ -128,6 +162,11 @@ function kernel.panic(reason, traceback)
         computer.pullSignal()
     end
 end
+
+-- Main code
+fs.mount(kernel.bootFs, "/")
+
+-- kernel.panic()
 
 if not kernel.execInit("/sbin/init.lua") and not kernel.execInit("/etc/init.lua") and not kernel.execInit("/bin/init.lua") then
     kernel.panic("Init not found. You are on your own now, good luck!")
