@@ -23,9 +23,3 @@ print("Kernel version: ".._KERNELVER)
 print("Init version: ".._INITVER)
 print("Boot drive space usage: "..fs.lowLevel.spaceUsed().."/"..fs.lowLevel.spaceTotal().." bytes available")
 print("Memory: "..computer.freeMemory().."/"..computer.totalMemory().." bytes available")
-
-fs.mount("c0da4fa9-06b0-4274-b63f-529710043592", "/mnt/")
-print(fs.findFilesystem("/mnt/test"))
-fs.unmount("c0da4fa9-06b0-4274-b63f-529710043592")
-print(fs.findFilesystem("/mnt/test"))
-
