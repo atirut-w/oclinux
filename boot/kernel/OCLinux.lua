@@ -2,7 +2,7 @@
 -- Set up variables
 _G.boot_invoke = nil
 _G._KERNELNAME = "OCLinux"
-_G._KERNELVER = "0.2.4 beta"
+_G._KERNELVER = "0.2.5 beta"
 _G._KERNELVERSION = _KERNELNAME.." ".._KERNELVER
 
 -- Load up basic libraries
@@ -51,69 +51,179 @@ end
 -- Start of the filesystem section
 fs = {}
 fs.lowLevel = component.proxy(computer.getBootAddress())
-fs.mountpoints = {}
+fs.filesystems = {}
+fs.mtab = {name="", children={}, links={}}
+fs.fstab = {}
 
-function fs.mount(filesystem, mountpoint)
-    fs.mountpoints[mountpoint] = filesystem
+function table.maxn(tab)
+    local i = 0
+    for k, v in pairs(tab) do
+        i = math.max(i, k)
+    end
+    return i
 end
 
-function fs.unmount(filesystem)
-    for mountpoint, mountrecord in ipairs(fs.mountpoints) do
-        if mountrecord == filesystem then
-            mountpoint = nil
+function fs.segments(path)
+    local parts = {}
+    for part in path:gmatch("[^\\/]+") do
+        local current, up = part:find("^%.?%.$")
+        if current then
+            if up == 2 then
+                table.remove(parts)
+            end
+        else
+            table.insert(parts, part)
         end
     end
+    return parts
 end
 
-function fs.findFilesystem(file)
-    -- Thanks to Z0idburg for providing the code
-    local matches = {}
-    for mountpoint, device in pairs(fs.mountpoints) do
-        if string.find(file, mountpoint) == 1 then 
-            table.insert(matches, mountpoint)
+function fs.hasMountPoint(path)
+    return fs.getNode(path) ~= nil
+end
+
+function fs.canonical(path)
+    local result = table.concat(fs.segments(path), "/")
+    if unicode.sub(path, 1, 1) == "/" then
+        return "/" .. result
+    else
+        return result
+    end
+end
+
+function fs.concat(...)
+    local set = table.pack(...)
+    for index, value in ipairs(set) do
+        checkArg(index, value, "string")
+    end
+    return fs.canonical(table.concat(set, "/"))
+end
+
+function fs.mount(path, filesystem)
+    --[[
+    if fs.hasMountPoint(path) then
+        error(path.." is already mounted")
+    end
+    ]]
+    table.insert(fs.filesystems, {path, filesystem})
+end
+
+function fs.localPath(node, path)
+    local localPath = path:gsub(node.path.."/", "")
+    return localPath
+end
+
+function fs.getDrives(automount)
+    local tab = {}
+    -- TODO add support for drives when an standardized unmanaged filesystem is made for OC
+    local i = 0
+    for k, v in pairs(component.list("filesystem")) do
+        -- uncorrect naming due to not knowing if it's floppy or disk drive
+        table.insert(tab, "/dev/" .. "hd".. string.char(string.byte('a') + i) .. "/")
+        if automount then
+            if not fs.contains(component.proxy(v)) then
+                fs.mount("/dev/" .. "hd".. string.char(string.byte('a') + i) .. "/", component.proxy(v))
+            end
+        end
+        i = i + 1
+    end
+    return tab
+end
+
+function fs.exists(path)
+    local node = fs.findNode(path)
+    if node == nil then
+        return false
+    end
+    local lp = fs.localPath(node, path)
+    return node.exists(lp)
+end
+
+-- Also has compatibility for older versions
+function fs.isReadOnly(path)
+    local node = fs.findNode(path)
+    if node == nil then
+        return false
+    end
+    local lp = fs.localPath(node, path)
+    if node.isReadOnly then
+        return node.isReadOnly(lp)
+    else
+        return false
+    end
+end
+
+function fs.getFile(path, mode)
+    local node fs.findNode(path)
+    local lp = fs.localPath(node, path)
+    local file = {}
+    file.handle = node.open(lp, mode)
+    file.seek = function(whence, offset)
+        return node.seek(file.handle, whence, offset)
+    end
+    file.write = function(value)
+        return node.write(file.handle, value)
+    end
+    file.read = function(amount)
+        return node.read(file.handle, amount)
+    end
+    file.size = function()
+        return node.size(lp)
+    end
+    file.close = function()
+        node.close(file.handle)
+    end
+    return file
+end
+
+function fs.size(path)
+    local node = fs.findNode(path)
+    if node == nil then
+        return -1
+    end
+    local lp = fs.localPath(node, path)
+    return node.size(lp)
+end
+
+function fs.findNode(path)
+    local lastPath = ""
+    local lastNode = nil
+    local seg = fs.segments(path)
+    for k, v in pairs(seg) do
+        if k < table.maxn(seg) then
+            lastPath = lastPath..v.."/"
+        else
+            lastPath = lastPath..v
+        end
+        local node = fs.getNode(lastPath)
+        if node ~= nil then
+            lastNode = node
+            node.path = lastPath
         end
     end
-    -- Now we figure out which one to use:
-    local target = ""
-    for _, mountpoint in ipairs(matches) do
-        if string.len(mountpoint) > string.len(target) then 
-            target = fs.mountpoints[mountpoint]
+    return lastNode
+end
+
+function fs.getNode(mountPath)
+    for k, v in pairs(fs.filesystems) do
+        local p = v[1]
+        if p == mountPath then -- if is same path
+            p = mountPath
+            print(p)
+            return p
         end
     end
-
-    if target == "" then 
-        return "Error: no mountpoint found"
-    end
-    return target
+    return nil
 end
 
-function fs.open(file, mode)
-    local fs = component.proxy(fs.findFilesystem(file))
-    return fs.open(file, mode)
-end
-
-function fs.close(filesystem, handle)
-    local fs = component.proxy(fs.findFilesystem(file))
-    return fs.close(handle)
-end
-
-function fs.exists(filesystem, file)
-    local fs = component.proxy(fs.findFilesystem(file))
-    return fs.exists(file)
-end
-
-function fs.read(filesystem, handle)
-    local fileContent = ""
-    local tmp = fileSize
-    local readed = ""
-    while true do
-        readed = fs.lowLevel.read(handle, 2048)
-        if readed == nil then
-            break
+function fs.contains(node)
+    for k, v in pairs(fs.filesystems) do
+        local p = v[2]
+        if p == node then
+            return true
         end
-        fileContent = fileContent..readed
     end
-    return fileContent
+    return false
 end
 
 -- Start of the kernel specific section
@@ -126,7 +236,7 @@ kernel.bootFs = computer.getBootAddress()
 
 function kernel.execInit(init)
     write("Looking for init \""..init.."\"....    ")
-    if fs.exists(kernel.bootFs, init) then
+    if fs.exists(init) then
         print("Init found!")
         initHandle = fs.open(init, "r")
         initC = fs.read(init, initHandle)
@@ -163,10 +273,12 @@ function kernel.panic(reason, traceback)
     end
 end
 
--- Main code
-fs.mount(kernel.bootFs, "/")
+-- Mount the boot device
+fs.mount("/", kernel.bootFs)
 
--- kernel.panic()
+for k, v in pairs(fs.getDrives(true)) do -- also auto-mount drives to dev/hd_
+  print(v)
+end
 
 if not kernel.execInit("/sbin/init.lua") and not kernel.execInit("/etc/init.lua") and not kernel.execInit("/bin/init.lua") then
     kernel.panic("Init not found. You are on your own now, good luck!")
