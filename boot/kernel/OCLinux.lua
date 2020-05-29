@@ -10,16 +10,14 @@ unicode = unicode or require('unicode')
 
 -- Kernel's own namespace kinda thing.
 local kernel = {
-    display = {
-        gpu = nil
-    }
+    display = {}
 }
 
 function kernel.display:initialize()
     self.gpu = component.proxy(component.list("gpu")())
 end
 
-function kernel:initialize() -- This function have to be executed for the kernel can do anything useful.
+function kernel:initialize() -- This function have to be executed before the kernel can do anything useful.
     self.display:initialize()
 end
 
