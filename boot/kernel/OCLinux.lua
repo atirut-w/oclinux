@@ -8,17 +8,34 @@ component = component or require('component')
 computer = computer or require('computer')
 unicode = unicode or require('unicode')
 
--- Kernel's own namespace kinda thing.
-local kernel = {
-    display = {}
+-- Kernel related facilities. Can be accessed through ENVs
+local display = {
+    isInitialized = false
+}
+local filesystem = {}
+local internal = {
+    isInitialized = false
 }
 
-function kernel.display:initialize()
+function display:initialize()
+    if (self.isInitialized) then
+        return false
+    else
+        self.isInitialized = true
+    end
     self.gpu = component.proxy(component.list("gpu")())
 end
 
-function kernel:initialize() -- This function have to be executed before the kernel can do anything useful.
-    self.display:initialize()
+function internal:initialize() -- This function have to be executed before the kernel can do anything useful.
+    if (self.isInitialized) then
+        return false
+    else
+        self.isInitialized = true
+    end
+    self.bootAddr = computer.getBootAddress()
+    
+    display:initialize()
+    self:initialize()
 end
 
-kernel:initialize()
+internal:initialize()
