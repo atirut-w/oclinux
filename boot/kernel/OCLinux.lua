@@ -18,7 +18,7 @@ local internal = {
 }
 
 function display:initialize()
-    if (self.isInitialized) then
+    if (self.isInitialized) then -- Prevent the function from running once initialized
         return false
     else
         self.isInitialized = true
@@ -27,7 +27,7 @@ function display:initialize()
 end
 
 function internal:initialize() -- This function have to be executed before the kernel can do anything useful.
-    if (self.isInitialized) then
+    if (self.isInitialized) then -- Prevent the function from running once initialized
         return false
     else
         self.isInitialized = true
@@ -35,7 +35,6 @@ function internal:initialize() -- This function have to be executed before the k
     self.bootAddr = computer.getBootAddress()
     
     display:initialize()
-    self:initialize()
 end
 
 internal:initialize()
