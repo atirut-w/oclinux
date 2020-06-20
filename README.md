@@ -1,5 +1,7 @@
 # About
-A Linux-like OS kernel written from scratch for OpenComputers mod. Currently does not even boot init.lua(not /init.lua at the root!) because I decided to rewrite it
+A Linux-like OS kernel written from scratch for OpenComputers mod. Currently does not even boot init.lua(not /init.lua at the root!) because I decided to rewrite it.
+
+If you want to contribute to this project, please work on the [testing branch](https://github.com/WattanaGaming/OCLinux/tree/testing) and not this blank one.
 
 # Credits
 Z0idburg for providing some codebase and for teaching me stuff.
