@@ -8,17 +8,4 @@ component = component or require('component')
 computer = computer or require('computer')
 unicode = unicode or require('unicode')
 
--- Kernel's own namespace kinda thing.
-local kernel = {
-    display = {}
-}
-
-function kernel.display:initialize()
-    self.gpu = component.proxy(component.list("gpu")())
-end
-
-function kernel:initialize() -- This function have to be executed before the kernel can do anything useful.
-    self.display:initialize()
-end
-
-kernel:initialize()
+-- The code for the master branch is blank at the time as OCL 0.3 is not ready yet. I should have done a better branch management prior to this.
