@@ -1,5 +1,7 @@
--- OCLinux kernel by Atirut Wattanamongkol(WattanaGaming)
+-- OCLinux kernel by WattanaGaming
 _G.boot_invoke = nil
+_G._KERNELNAME = "OCLinux"
+_G._KERNELVER = "0.3 beta"
 
 -- These are needed to do literally anything.
 local component = component or require('component')
