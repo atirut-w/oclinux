@@ -1,5 +1,5 @@
 # About
-A Linux-like OS kernel written from scratch for OpenComputers mod. Currently does not even boot init.lua(not /init.lua at the root!) because I decided to rewrite it
+A Linux-like OS kernel written from scratch for OpenComputers mod.
 
 # Credits
 Z0idburg for providing some codebase and for teaching me stuff.
