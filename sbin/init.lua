@@ -1,11 +1,3 @@
-local baseModules = {
-    "filesystem.lua"
-}
-
-kernel.display.simpleBuffer:line("Loading base modules...")
-for i=1,#baseModules do
-    kernel.internal.loadModule(kernel.internal.loadfile("/boot/modules/"..baseModules[i]))
-    error()
-end
-
-kernel.modules.filesystem.mount(kernel.internal.bootAddr, "/")
+-- Test if init.lua is loaded and executed. Also to see if error handling is working properly.
+i = 0
+while true do i = i + 1 end -- Loop without yield.

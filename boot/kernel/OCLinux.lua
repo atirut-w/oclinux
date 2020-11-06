@@ -1,4 +1,4 @@
--- OCLinux kernel by WattanaGaming
+-- OCLinux kernel by Atirut Wattanamongkol(WattanaGaming)
 _G.boot_invoke = nil
 _G._KERNELNAME = "OCLinux"
 _G._KERNELVER = "0.3 beta"
@@ -14,8 +14,8 @@ kernel = {
   display = {
     isInitialized = false,
     resolution = {
-      x = nil,
-      y = nil
+      x = 0,
+      y = 0
     },
     
     initialize = function(self)
@@ -51,38 +51,38 @@ kernel = {
     }
   },
   
-  CoroutineManager = {
+  threads = {
     coroutines = {},
     
-    CreateCoroutine = function(self, func, name)
+    new = function(self, func, name, options)
       name = name or ""
+      options = options or {}
       local id = #self.coroutines + 1
-      self.coroutines[id] = {
+      local cData = {
         cname = name,
         co = coroutine.create(func),
       }
+      if options.errHandler then
+        cData.errHandler = options.errHandler
+      end
+      self.coroutines[id] = cData
       return id
     end,
     
-    ExecuteCoroutines = function(self)
+    cycle = function(self)
       for i=1,#self.coroutines do
-        coroutine.resume(self.coroutines[i].co)
+        local current = self.coroutines[i]
+        local success, result = coroutine.resume(current.co)
+        if not success then
+          error(result)
+        elseif not success and current.errHandler then
+          current.errHandler(result)
+        end
       end
     end
   },
   
   essentials = {
-    loadfile = function(file, env)
-      local handle = kernel.filesystem.open(file, "r")
-      local buffer = ""
-      repeat
-        local data = handle:read(1024)
-        buffer = buffer .. (data or "")
-      until not data
-      handle:close()
-      return load(buffer, "=" .. file, "bt", env)
-    end,
-
     createSandbox = function(template, interfaces)
       template = template or _G
       local seen = {} -- DO NOT define this inside the function.
@@ -100,6 +100,7 @@ kernel = {
       end
       local sandbox = copy(template)
       sandbox._G = sandbox
+      if interfaces then sandbox.interfaces = interfaces end
       return sandbox
     end,
   },
@@ -110,13 +111,12 @@ kernel = {
       kLevel = kernel,
       blank = {}
     },
-    interfaces = { -- For two-way comms
-      "display",
-      "filesystem",
-      "modules",
-    },
+    -- This table is causing errors for some reason.
+    --[[sandboxInterfaces = {
+      display = kernel.display
+    },]]
     
-    loadfile = function(file)
+    loadfile = function(file, env)
       local addr, invoke = computer.getBootAddress(), component.invoke
       local handle = assert(invoke(addr, "open", file))
       local buffer = ""
@@ -125,11 +125,7 @@ kernel = {
         buffer = buffer .. (data or "")
       until not data
       invoke(addr, "close", handle)
-      return load(buffer, "=" .. file, "bt", _G)
-    end,
-
-    loadModule = function(modFunc, modName)
-      kernel.modules[modName] = load(modFunc, "="..modName, "bt", _G)()
+      return load(buffer, "=" .. file, "bt", env)
     end,
     
     initialize = function(self)
@@ -139,11 +135,20 @@ kernel = {
       self.bootAddr = computer.getBootAddress()
       
       kernel.display:initialize()
-      local initSandbox = kernel.essentials.createSandbox(self.accessLevel.kLevel, self.interfaces)
-
       kernel.display.simpleBuffer:line("Loading and executing /sbin/init.lua")
 
-      kernel.CoroutineManager:CreateCoroutine(self.loadfile("/sbin/init.lua", _G), "init")
+      -- local initSandbox = kernel.essentials.createSandbox(self.accessLevel.kLevel)
+      kernel.threads:new(self.loadfile("/sbin/init.lua", _G), "init", {
+        errHandler = function(err) -- Special handler.
+          computer.beep(1000, 0.1)
+          local print = function(a) kernel.display.simpleBuffer:line(a) end
+          print("Error whilst executing init:")
+          print("  "..tostring(err))
+          print("")
+          print("Halted.")
+          while true do computer.pullSignal() end
+        end
+      })
 
       self.isInitialized = true
       return true
@@ -153,8 +158,8 @@ kernel = {
 
 kernel.internal:initialize()
 
-while coroutine.status(kernel.CoroutineManager.coroutines[1].co) ~= "dead" do
-  kernel.CoroutineManager:ExecuteCoroutines()
+while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
+  kernel.threads:cycle()
 end
 
 kernel.display.simpleBuffer:line("Init has returned.")
