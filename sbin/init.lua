@@ -4,8 +4,11 @@ local display = coroutine.yield({
     call = "getDisplay"
   }
 })
-i = 0
-for i=1,20 do
-  display.simpleBuffer:line("test "..i)
-end
+local ctx, args coroutine.yield({
+  syscall = {
+    call = "testCall",
+    args = "djsdavbjfdgfsdvfsdbj"
+  }
+})
 
+display.simpleBuffer:line(args)

@@ -89,15 +89,21 @@ kernel.threads = {
         return
       end
       
-      local success, result = coroutine.resume(current.co, current.inputBuffer or nil)
+      local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
       -- Handle values or requests made by the thread.
       if success and result then
         if result.syscall then -- Deal with SysCalls
           local syscall = result.syscall
-          current.inputBuffer = (current.syscallHandler or function(call,args) -- Built-in handler
-            return (kernel.syscallList[call] or kernel.syscallList["default"])(args)
-          end)(syscall.call, syscall.args)
+          local ctx = {
+            pid = i
+          }
+
+          local function procSyscall(call, ctx, args)
+            return (kernel.syscallList[call] or kernel.syscallList["default"])(ctx, args)
+          end
+
+          current.inputBuffer = (current.syscallHandler or procSyscall)(syscall.call, ctx, syscall.args)
         end
       end
       
@@ -118,7 +124,6 @@ kernel.threads = {
 
 kernel.syscallList = {
   ["default"] = function() error("Invalid syscall", 4) end,
-  ["getDisplay"] = function() return kernel.display end
 }
 
 kernel.internal = {
