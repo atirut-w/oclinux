@@ -33,14 +33,18 @@ kernel.display = {
   simpleBuffer = {
     lineBuffer = {},
     
-    updateScreen = function(self) -- TODO: Minimize screen flickers
-      if #self.lineBuffer > kernel.display.resolution.y then
+    updateScreen = function(self)
+      local gpu = kernel.display.gpu
+      local resolution = kernel.display.resolution
+      if #self.lineBuffer > resolution.y then
         table.remove(self.lineBuffer, 1)
-        kernel.display.gpu.fill(1, 1, kernel.display.resolution.x, kernel.display.resolution.y, " ")
+        -- Scroll instead of redrawing the entire screen. This reduce screen flickering.
+        gpu.copy(0, 1, resolution.x, resolution.y, 0, -1)
+        gpu.fill(1, resolution.y, resolution.x, 1, " ")
+        gpu.set(1, resolution.y, self.lineBuffer[resolution.y])
+        return
       end
-      for i=1,#self.lineBuffer do
-        kernel.display.gpu.set(1, i, self.lineBuffer[i])
-      end
+      gpu.set(1, #self.lineBuffer, self.lineBuffer[#self.lineBuffer])
     end,
     
     line = function(self, text)
