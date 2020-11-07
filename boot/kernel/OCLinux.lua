@@ -58,14 +58,17 @@ kernel.threads = {
     name = name or ""
     options = options or {}
     local id = #self.coroutines + 1
-    local cData = {
+
+    local tData = {
       cname = name,
       co = coroutine.create(func),
     }
+
     if options.errHandler then
-      cData.errHandler = options.errHandler
+      tData.errHandler = options.errHandler
     end
-    self.coroutines[id] = cData
+
+    self.coroutines[id] = tData
     return id
   end,
     
@@ -73,10 +76,11 @@ kernel.threads = {
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
       local success, result = coroutine.resume(current.co)
-      if not success then
-        error(result)
-      elseif not success and current.errHandler then
+
+      if not success and current.errHandler then
         current.errHandler(result)
+      elseif not success then
+        error(result)
       end
     end
   end
