@@ -28,7 +28,7 @@ kernel.display = {
     self.isInitialized = true
     return true
   end,
-    
+  
   -- A very basic and barebone system for putting texts on the screen.
   simpleBuffer = {
     lineBuffer = {},
@@ -54,7 +54,7 @@ kernel.display = {
     end
   }
 }
-  
+
 kernel.threads = {
   coroutines = {},
   
@@ -62,24 +62,25 @@ kernel.threads = {
     name = name or ""
     options = options or {}
     local id = #self.coroutines + 1
-
+    
     local tData = {
       cname = name,
       -- Consider using `coroutine.wrap()`?
       co = coroutine.create(func),
     }
+    tData.inputBuffer = options.args or {} -- Rudimentary way to send stuff to the coroutine.
+    tData.syscallHandler = options.syscallHandler or nil
     tData.errHandler = options.errHandler or nil
     tData.stallProtection = options.stallProtection or false -- Temp fix for thread stall crash
-
+    
     self.coroutines[id] = tData
     return id
   end,
-
-  --[[ FIXME:
-    If too many threads stall successively, a crash WILL happen when cycling threads.
-    Either append `computer.pullSignal()` to the end of the loop(significant slowdown) OR
-    Try to detect the "too long without yielding" result and then do `pullSignal()`
-  ]]
+  
+  -- FIXME:
+  -- If too many threads stall successively, a crash WILL happen when cycling threads.
+  -- Either append `computer.pullSignal()` to the end of the loop(significant slowdown) OR
+  -- Try to detect the "too long without yielding" result and then do `pullSignal()`
   cycle = function(self)
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
@@ -87,8 +88,19 @@ kernel.threads = {
         current = nil
         return
       end
-
-      local success, result = coroutine.resume(current.co)
+      
+      local success, result = coroutine.resume(current.co, current.inputBuffer or nil)
+      if current.inputBuffer then current.inputBuffer = nil end
+      -- Handle values or requests made by the thread.
+      if success and result then
+        if result.syscall then -- Deal with SysCalls
+          local syscall = result.syscall
+          current.inputBuffer = (current.syscallHandler or function(call,args) -- Built-in handler
+            return (kernel.syscallList[call] or kernel.syscallList["default"])(args)
+          end)(syscall.call, syscall.args)
+        end
+      end
+      
       if not success and current.errHandler then
         current.errHandler(result)
       elseif not success then
@@ -104,39 +116,13 @@ kernel.threads = {
   end
 }
 
-kernel.essentials = {
-  createSandbox = function(template, interfaces)
-    template = template or _G
-    local seen = {} -- DO NOT define this inside the function.
-    local function copy(tbl) -- Massive thanks to Ocawesome101 for this loop!
-      local ret = {}
-      for k, v in pairs(tbl) do -- TODO: Make this loop function-independent.
-        if type(v) == "table" and not seen[v] then
-          seen[v] = true
-          ret[k] = copy(v)
-        else
-          ret[k] = v
-        end
-      end
-      return ret
-    end
-    local sandbox = copy(template)
-    sandbox._G = sandbox
-    if interfaces then sandbox.interfaces = interfaces end
-    return sandbox
-  end,
+kernel.syscallList = {
+  ["default"] = function() error("Invalid syscall", 4) end,
+  ["getDisplay"] = function() return kernel.display end
 }
 
 kernel.internal = {
   isInitialized = false,
-  accessLevel = {
-    kLevel = kernel,
-    blank = {}
-  },
-  
-  sandboxInterfaces = {
-    display = kernel.display
-  },
   
   loadfile = function(file, env)
     local addr, invoke = computer.getBootAddress(), component.invoke
@@ -158,8 +144,7 @@ kernel.internal = {
     
     kernel.display:initialize()
     kernel.display.simpleBuffer:line("Loading and executing /sbin/init.lua")
-     -- local initSandbox = kernel.essentials.createSandbox(self.accessLevel.kLevel)
-    kernel.threads:new(self.loadfile("/sbin/init.lua", _G), "init", {
+    kernel.threads:new(self.loadfile("/sbin/init.lua", {coroutine = coroutine}), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
         local print = function(a) kernel.display.simpleBuffer:line(a) end
@@ -170,21 +155,7 @@ kernel.internal = {
         while true do computer.pullSignal() end
       end
     })
-
-    -- Stall test
-    for t=1,3 do
-      kernel.threads:new(function()
-        for i=1,10 do
-          kernel.display.simpleBuffer:line("["..t.."] ".."SPAMMER LOL(iteration "..i..")")
-          coroutine.yield()
-        end
-        while true do i = i + 1 end -- Loop without yield.
-      end, "testThread", {
-        errHandler = function(err) kernel.display.simpleBuffer:line(err) end,
-        stallProtection = true -- Prevent thread stall crash at the cost of performance.
-      })
-    end
-
+    
     self.isInitialized = true
     return true
   end
