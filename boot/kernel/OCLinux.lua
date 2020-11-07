@@ -33,10 +33,10 @@ kernel.display = {
   simpleBuffer = {
     lineBuffer = {},
     
-    updateScreen = function(self)
-      kernel.display.gpu.fill(1, 1, kernel.display.resolution.x, kernel.display.resolution.y, " ")
+    updateScreen = function(self) -- TODO: Minimize screen flickers
       if #self.lineBuffer > kernel.display.resolution.y then
         table.remove(self.lineBuffer, 1)
+        kernel.display.gpu.fill(1, 1, kernel.display.resolution.x, kernel.display.resolution.y, " ")
       end
       for i=1,#self.lineBuffer do
         kernel.display.gpu.set(1, i, self.lineBuffer[i])
@@ -61,27 +61,41 @@ kernel.threads = {
 
     local tData = {
       cname = name,
+      -- Consider using `coroutine.wrap()`?
       co = coroutine.create(func),
     }
-
-    if options.errHandler then
-      tData.errHandler = options.errHandler
-    end
+    tData.errHandler = options.errHandler or nil
+    tData.stallProtection = options.stallProtection or false -- Temp fix for thread stall crash
 
     self.coroutines[id] = tData
     return id
   end,
-    
+
+  --[[ FIXME:
+    If too many threads stall successively, a crash WILL happen when cycling threads.
+    Either append `computer.pullSignal()` to the end of the loop(significant slowdown) OR
+    Try to detect the "too long without yielding" result and then do `pullSignal()`
+  ]]
   cycle = function(self)
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
-      local success, result = coroutine.resume(current.co)
+      if coroutine.status(current.co) == "dead" then
+        current = nil
+        return
+      end
 
+      local success, result = coroutine.resume(current.co)
       if not success and current.errHandler then
         current.errHandler(result)
       elseif not success then
         error(result)
       end
+      --[[ This detection ain't working :pensive:
+      if result == "too long without yielding" then
+        current.errHandler("Stall detected.")
+      end
+      ]]
+      if current.stallProtection then computer.pullSignal(0.1) end -- Temp fix for thread stall crash
     end
   end
 }
@@ -152,6 +166,21 @@ kernel.internal = {
         while true do computer.pullSignal() end
       end
     })
+
+    -- Stall test
+    for t=1,3 do
+      kernel.threads:new(function()
+        for i=1,10 do
+          kernel.display.simpleBuffer:line("["..t.."] ".."SPAMMER LOL(iteration "..i..")")
+          coroutine.yield()
+        end
+        while true do i = i + 1 end -- Loop without yield.
+      end, "testThread", {
+        errHandler = function(err) kernel.display.simpleBuffer:line(err) end,
+        stallProtection = true -- Prevent thread stall crash at the cost of performance.
+      })
+    end
+
     self.isInitialized = true
     return true
   end
