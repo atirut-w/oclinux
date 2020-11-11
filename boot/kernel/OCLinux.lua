@@ -1,7 +1,5 @@
 -- OCLinux kernel by Atirut Wattanamongkol(WattanaGaming)
 _G.boot_invoke = nil
-_G._KERNELNAME = "OCLinux"
-_G._KERNELVER = "0.3 beta"
 
 -- These are needed to do literally anything.
 local component = component or require('component')
@@ -37,7 +35,9 @@ kernel.display = {
       local gpu = kernel.display.gpu
       local resolution = kernel.display.resolution
       if #self.lineBuffer > resolution.y then
-        table.remove(self.lineBuffer, 1)
+        while #self.lineBuffer > resolution.y do
+          table.remove(self.lineBuffer, 1)
+        end
         -- Scroll instead of redrawing the entire screen. This reduce screen flickering.
         gpu.copy(0, 1, resolution.x, resolution.y, 0, -1)
         gpu.fill(1, resolution.y, resolution.x, 1, " ")
@@ -47,9 +47,39 @@ kernel.display = {
       gpu.set(1, #self.lineBuffer, self.lineBuffer[#self.lineBuffer])
     end,
     
-    line = function(self, text)
+    print = function(self, text)
       text = text or ""
-      table.insert(self.lineBuffer, tostring(text))
+      text = tostring(text)
+      if text:len() > kernel.display.resolution.x then
+        local function split(str, max_line_length)
+          local lines = {}
+          local line
+          str:gsub('(%s*)(%S+)', 
+             function(spc, word) 
+                if not line or #line + #spc + #word > max_line_length then
+                   table.insert(lines, line)
+                   line = word
+                else
+                   line = line..spc..word
+                end
+             end
+          )
+          table.insert(lines, line)
+          return lines
+        end
+        for _, line in ipairs(split(text, kernel.display.resolution.x)) do
+          self:print(line)
+        end
+      else
+        table.insert(self.lineBuffer, text)
+      end
+      self:updateScreen()
+    end,
+
+    write = function(self, text)
+      text = text or ""
+      text = tostring(text)
+      self.lineBuffer[#self.lineBuffer] = self.lineBuffer[#self.lineBuffer]..text
       self:updateScreen()
     end
   }
@@ -69,7 +99,6 @@ kernel.threads = {
       co = coroutine.create(func),
     }
     tData.inputBuffer = options.args or {} -- Rudimentary way to send stuff to the coroutine.
-    tData.syscallHandler = options.syscallHandler or nil
     tData.errHandler = options.errHandler or nil
     tData.stallProtection = options.stallProtection or false -- Temp fix for thread stall crash
     
@@ -95,15 +124,15 @@ kernel.threads = {
       if success and result then
         if result.syscall then -- Deal with SysCalls
           local syscall = result.syscall
+          -- Context for syscall functions
           local ctx = {
             pid = i
           }
-
+          
           local function procSyscall(call, ctx, args)
             return (kernel.syscallList[call] or kernel.syscallList["default"])(ctx, args)
           end
-
-          current.inputBuffer = (current.syscallHandler or procSyscall)(syscall.call, ctx, syscall.args)
+          current.inputBuffer = procSyscall(syscall.call, ctx, syscall.args)
         end
       end
       
@@ -112,11 +141,6 @@ kernel.threads = {
       elseif not success then
         error(result)
       end
-      --[[ This detection ain't working :pensive:
-      if result == "too long without yielding" then
-        current.errHandler("Stall detected.")
-      end
-      ]]
       if current.stallProtection then computer.pullSignal(0.1) end -- Temp fix for thread stall crash
     end
   end
@@ -124,12 +148,35 @@ kernel.threads = {
 
 kernel.syscallList = {
   ["default"] = function() error("Invalid syscall", 4) end,
+  ["getDisplay"] = function() return kernel.display end,
+  ["getSystem"] = function() return {
+    bootAddress = computer.getBootAddress(),
+  } end,
+  ["readfile"] = function(ctx, file) return kernel.internal.readfile(file) end,
+  ["kernel.initModule"] = function(ctx, args)
+    -- This function basically compile modstring into a function and execute it with a stripped down ENV
+    -- then put the table that the module returned into `kernel.modules`
+    assert(args, "Not enough or no arguments")
+    assert(args[1] or args[1] ~= "", "Module string is blank or nil")
+    assert(args[2] or args[2] ~= "", "Module name is blank or nil")
+
+    local modstring, modname = args[1], args[2]
+    local modfunc = load(modstring, "=" .. modname, "bt", kernel.internal.baseEnv)
+    local success, result = pcall(modfunc)
+
+    if success and result then kernel.modules[modname] = result return true
+    elseif not success then error("Module execution error:\r"..result, 0) end
+  end,
+  ["kernel.getModule"] = function(ctx, name)
+    assert(kernel.modules[name], "Invalid module name")
+    return kernel.modules[name]
+  end,
 }
 
 kernel.internal = {
   isInitialized = false,
   
-  loadfile = function(file, env)
+  readfile = function(file)
     local addr, invoke = computer.getBootAddress(), component.invoke
     local handle = assert(invoke(addr, "open", file))
     local buffer = ""
@@ -138,7 +185,11 @@ kernel.internal = {
       buffer = buffer .. (data or "")
     until not data
     invoke(addr, "close", handle)
-    return load(buffer, "=" .. file, "bt", env)
+    return buffer
+  end,
+  
+  loadfile = function(file, env)
+    return load(kernel.internal.readfile(file), "=" .. file, "bt", env)
   end,
   
   initialize = function(self)
@@ -148,11 +199,12 @@ kernel.internal = {
     self.bootAddr = computer.getBootAddress()
     
     kernel.display:initialize()
-    kernel.display.simpleBuffer:line("Loading and executing /sbin/init.lua")
-    kernel.threads:new(self.loadfile("/sbin/init.lua", {coroutine = coroutine}), "init", {
+    kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
+
+    kernel.threads:new(self.loadfile("/sbin/init.lua", kernel.internal.baseEnv), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
-        local print = function(a) kernel.display.simpleBuffer:line(a) end
+        local print = function(a) kernel.display.simpleBuffer:print(a) end
         print("Error whilst executing init:")
         print("  "..tostring(err))
         print("")
@@ -166,10 +218,27 @@ kernel.internal = {
   end
 }
 
+kernel.internal.baseEnv = {
+  coroutine = coroutine,
+  checkArg = checkArg,
+  component = component,
+  unicode = unicode,
+  type = type,
+  next = next,
+  assert = assert,
+  pairs = pairs,
+  select = select,
+  table = table,
+  tostring = tostring,
+  setmetatable = setmetatable,
+  math = math,
+}
+kernel.internal.baseEnv._G = kernel.internal.baseEnv
+
 kernel.internal:initialize()
 
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
   kernel.threads:cycle()
 end
 
-kernel.display.simpleBuffer:line("Init has returned.")
+kernel.display.simpleBuffer:print("Init has returned.")
