@@ -136,16 +136,22 @@ kernel.threads = {
         end
       end
       
-      if not success and current.errHandler then
+      if not success and string.find(result, "too long without yielding") then -- TODO: Do some testing
+        computer.pullSignal(0.1)
+        if current.errHandler then
+          current.errHandler(result)
+        end
+      elseif not success and current.errHandler then
         current.errHandler(result)
       elseif not success then
         error(result)
       end
-      if current.stallProtection then computer.pullSignal(0.1) end -- Temp fix for thread stall crash
+      -- if current.stallProtection then computer.pullSignal(0.1) end -- Temp fix for thread stall crash
     end
   end
 }
 
+-- TODO: Consider looking for a better implementation
 kernel.syscallList = {
   ["default"] = function() error("Invalid syscall", 4) end,
   ["getDisplay"] = function() return kernel.display end,
@@ -220,6 +226,7 @@ kernel.internal = {
   end
 }
 
+-- TODO: Replace this with a copy of _G
 kernel.internal.baseEnv = {
   coroutine = coroutine,
   checkArg = checkArg,
