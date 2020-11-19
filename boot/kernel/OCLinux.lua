@@ -138,10 +138,8 @@ kernel.threads = {
       
       if not success and string.find(result, "too long without yielding") then -- TODO: Do some testing
         computer.pullSignal(0.1)
-        if current.errHandler then
-          current.errHandler(result)
-        end
-      elseif not success and current.errHandler then
+      end
+      if not success and current.errHandler then
         current.errHandler(result)
       elseif not success then
         error(result)
