@@ -171,6 +171,8 @@ kernel.syscallList = {
     assert(kernel.modules[name], "Invalid module name")
     return kernel.modules[name]
   end,
+  ["threads.new"] = function(ctx, args) return kernel.threads:new(args[1], args[2], args[3]) end,
+  ["threads.exists"] = function(ctx, pid) if kernel.threads.coroutines[pid] then return true else return false end end,
 }
 
 kernel.internal = {
@@ -178,7 +180,7 @@ kernel.internal = {
   
   readfile = function(file)
     local addr, invoke = computer.getBootAddress(), component.invoke
-    local handle = assert(invoke(addr, "open", file))
+    local handle = assert(invoke(addr, "open", file), "Requested file "..file.." not found")
     local buffer = ""
     repeat
       local data = invoke(addr, "read", handle, math.huge)
@@ -232,6 +234,8 @@ kernel.internal.baseEnv = {
   tostring = tostring,
   setmetatable = setmetatable,
   math = math,
+  load = load,
+  error = error,
 }
 kernel.internal.baseEnv._G = kernel.internal.baseEnv
 

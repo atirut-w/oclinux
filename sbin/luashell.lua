@@ -1,0 +1,1 @@
+error("Nope, the shell ain't ready yet.")
