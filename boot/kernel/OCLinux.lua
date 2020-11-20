@@ -114,7 +114,7 @@ kernel.threads = {
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
       if coroutine.status(current.co) == "dead" then
-        current = nil
+        self.coroutines[i] = nil
         return
       end
       
