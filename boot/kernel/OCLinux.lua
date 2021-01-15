@@ -4,7 +4,7 @@ _G.boot_invoke = nil
 -- These are needed to do literally anything.
 local component = component or require('component')
 local computer = computer or require('computer')
-local unicode = unicode or require('unicode')
+-- local unicode = unicode or require('unicode')
 
 -- Kernel table containing built-in functions.
 local kernel = {}
@@ -100,16 +100,12 @@ kernel.threads = {
     }
     tData.inputBuffer = options.args or {} -- Rudimentary way to send stuff to the coroutine.
     tData.errHandler = options.errHandler or nil
-    tData.stallProtection = options.stallProtection or false -- Temp fix for thread stall crash
+    tData.stallProtection = options.stallProtection or false
     
     self.coroutines[id] = tData
     return id
   end,
   
-  -- FIXME:
-  -- If too many threads stall successively, a crash WILL happen when cycling threads.
-  -- Either append `computer.pullSignal()` to the end of the loop(significant slowdown) OR
-  -- Try to detect the "too long without yielding" result and then do `pullSignal()`
   cycle = function(self)
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
@@ -120,7 +116,6 @@ kernel.threads = {
       
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
-      -- Handle values or requests made by the thread.
       
       if not success and string.find(result, "too long without yielding") then -- TODO: Do some testing
         computer.pullSignal(0.1)
@@ -130,7 +125,6 @@ kernel.threads = {
       elseif not success then
         error(result)
       end
-      -- if current.stallProtection then computer.pullSignal(0.1) end -- Temp fix for thread stall crash
     end
   end
 }
@@ -162,7 +156,9 @@ kernel.internal = {
     end
 
     if isSandbox == true then
-      return load(kernel.internal.readfile(file), "=" .. file, "bt", copy(env))
+      local sandbox = copy(env)
+      sandbox._G = sandbox
+      return load(kernel.internal.readfile(file), "=" .. file, "bt", sandbox)
     else
       return load(kernel.internal.readfile(file), "=" .. file, "bt", env)
     end
