@@ -117,7 +117,7 @@ kernel.threads = {
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
       
-      if not success and string.find(result, "too long without yielding") then -- TODO: Do some testing
+      if not success and string.find(tostring(result), "too long without yielding") then -- TODO: Do some testing
         computer.pullSignal(0.1)
       end
       if not success and current.errHandler then
@@ -191,12 +191,11 @@ kernel.internal = {
   end
 }
 
-kernel.internal:initialize()
 
+
+kernel.internal:initialize()
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
   kernel.threads:cycle()
 end
-
-print(bruhhhhh)
 
 kernel.display.simpleBuffer:print("Init has returned.")
