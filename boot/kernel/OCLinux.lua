@@ -54,8 +54,8 @@ kernel.display = {
         local function split(str, max_line_length)
           local lines = {}
           local line
-          str:gsub('(%s*)(%S+)', 
-             function(spc, word) 
+          str:gsub('(%s*)(%S+)',
+             function(spc, word)
                 if not line or #line + #spc + #word > max_line_length then
                    table.insert(lines, line)
                    line = word
@@ -105,7 +105,7 @@ kernel.threads = {
     self.coroutines[id] = tData
     return id
   end,
-  
+
   -- FIXME:
   -- If too many threads stall successively, a crash WILL happen when cycling threads.
   -- Either append `computer.pullSignal()` to the end of the loop(significant slowdown) OR
