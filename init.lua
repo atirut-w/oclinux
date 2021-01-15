@@ -1,7 +1,7 @@
 _G._OSVERSION = "OpenLoader 0.3"
 local component = component or require('component')
 local computer = computer or require('computer')
-local unicode = unicode or require('unicode')
+-- local unicode = unicode or require('unicode')
 
 local eeprom = component.list("eeprom")()
 computer.getBootAddress = function()
@@ -104,7 +104,7 @@ local function labelText(fs)
   if lbl then return " ('"..lbl.."')" else return "" end
 end
 
-status(_OSVERSION)
+status(_G._OSVERSION)
 status("Select what to boot:")
 
 local osList = {}
@@ -120,8 +120,8 @@ for fs in component.list("filesystem") do
         local osName = "init.lua"
         if component.invoke(fs, "exists", ".osprop") then
             pcall(function()
-                local prop = dofile(fs, ".osprop") 
-                osName = (prop and prop.name) or "init.lua" 
+                local prop = dofile(fs, ".osprop")
+                osName = (prop and prop.name) or "init.lua"
             end)
         end
         osList[#osList+1] = {fpx = "", file = "init.lua", address = fs}
@@ -148,5 +148,5 @@ while true do
         end
     end
 end
-error("System crashed")
-while true do computer.pullSignal() end
+-- error("System crashed")
+-- while true do computer.pullSignal() end
