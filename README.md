@@ -1,5 +1,5 @@
 # About
-A Linux-like OS kernel written from scratch for OpenComputers mod.
+A Linux-like OS kernel written from scratch for the OpenComputers mod.
 
 # Credits
 Z0idburg for providing some codebase and for teaching me stuff.
