@@ -67,6 +67,7 @@ local function loadfile(fs, file)
         error(reason)
     end
     local buffer = ""
+    reason = nil
     repeat
         local data, reason = component.invoke(fs,"read",handle,math.huge)
         if not data and reason then
