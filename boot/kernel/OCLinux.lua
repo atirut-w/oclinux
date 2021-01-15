@@ -197,12 +197,14 @@ kernel.internal = {
   end
 }
 
+kernel.internal:initialize()
+
 system = {
   deviceInfo = (function() return computer.getDeviceInfo() end)(),
   architecture = (function() return computer.getArchitecture() end)(),
   bootAddress = (function() return computer.getBootAddress() end)(),
   display = {
-    gpu = (function() return kernel.display.gpu end)(),
+    gpu = kernel.display.gpu,
     simplePrint = function(message) kernel.display.simpleBuffer:print(message) end,
     simpleWrite = function(message) kernel.display.simpleBuffer:print(message) end,
   },
@@ -228,10 +230,12 @@ system = {
       exists = function(pid) if kernel.threads.coroutines[pid] then return true else return false end end,
     },
   },
-
 }
 
 kernel.internal:initialize()
+
+kernel.display.simpleBuffer:print(kernel.display.gpu)
+kernel.display.simpleBuffer:print(system.display.gpu)
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
   kernel.threads:cycle()
 end
