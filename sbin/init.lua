@@ -1,1 +1,2 @@
-kernel.display.simpleBuffer:print("Test")
+print(bruhhhhh)
+bruhhhhh = 100

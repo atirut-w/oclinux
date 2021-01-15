@@ -6,8 +6,8 @@ local component = component or require('component')
 local computer = computer or require('computer')
 local unicode = unicode or require('unicode')
 
--- Kernel table containing built-in functions. 
-kernel = {}
+-- Kernel table containing built-in functions.
+local kernel = {}
 kernel.modules = {}
 kernel.display = {
   isInitialized = false,
@@ -54,8 +54,8 @@ kernel.display = {
         local function split(str, max_line_length)
           local lines = {}
           local line
-          str:gsub('(%s*)(%S+)', 
-             function(spc, word) 
+          str:gsub('(%s*)(%S+)',
+             function(spc, word)
                 if not line or #line + #spc + #word > max_line_length then
                    table.insert(lines, line)
                    line = word
@@ -163,7 +163,7 @@ kernel.internal = {
     kernel.display:initialize()
     kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
 
-    kernel.threads:new(self.loadfile("/sbin/init.lua", _G), "init", {
+    kernel.threads:new(self.loadfile("/sbin/init.lua", _G, true), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
         local print = function(a) kernel.display.simpleBuffer:print(a) end
@@ -172,7 +172,8 @@ kernel.internal = {
         print("")
         print("Halted.")
         while true do computer.pullSignal() end
-      end
+      end,
+      sandbox = true
     })
     
     self.isInitialized = true
@@ -181,9 +182,13 @@ kernel.internal = {
 }
 
 kernel.internal:initialize()
+print = function(message) kernel.display.simpleBuffer:print(message) end
+bruhhhhh = "yus"
 
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
   kernel.threads:cycle()
 end
+
+print(bruhhhhh)
 
 kernel.display.simpleBuffer:print("Init has returned.")
