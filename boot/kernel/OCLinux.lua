@@ -149,7 +149,7 @@ kernel.internal = {
     invoke(addr, "close", handle)
     return buffer
   end,
-
+  
   loadfile = function(file, env)
     return load(kernel.internal.readfile(file), "=" .. file, "bt", env)
   end,
