@@ -98,7 +98,7 @@ kernel.threads = {
       -- Consider using `coroutine.wrap()`?
       co = coroutine.create(func),
     }
-    tData.inputBuffer = options.args or {} -- Rudimentary way to send stuff to the coroutine.
+    tData.inputBuffer = options.args or nil -- Rudimentary way to send stuff to the coroutine.
     tData.errHandler = options.errHandler or nil
     tData.stallProtection = options.stallProtection or false
     
@@ -143,20 +143,20 @@ kernel.internal = {
     invoke(addr, "close", handle)
     return buffer
   end,
+
+  copy = function(obj, seen)
+    if type(obj) ~= 'table' then return obj end
+    if seen and seen[obj] then return seen[obj] end
+    local s = seen or {}
+    local res = setmetatable({}, getmetatable(obj))
+    s[obj] = res
+    for k, v in pairs(obj) do res[kernel.internal.copy(k, s)] = kernel.internal.copy(v, s) end
+    return res
+  end,
   
   loadfile = function(file, env, isSandbox)
-    local function copy(obj, seen)
-      if type(obj) ~= 'table' then return obj end
-      if seen and seen[obj] then return seen[obj] end
-      local s = seen or {}
-      local res = setmetatable({}, getmetatable(obj))
-      s[obj] = res
-      for k, v in pairs(obj) do res[copy(k, s)] = copy(v, s) end
-      return res
-    end
-
     if isSandbox == true then
-      local sandbox = copy(env)
+      local sandbox = kernel.internal.copy(env)
       sandbox._G = sandbox
       return load(kernel.internal.readfile(file), "=" .. file, "bt", sandbox)
     else
@@ -191,7 +191,37 @@ kernel.internal = {
   end
 }
 
+system = {
+  deviceInfo = (function() return computer.getDeviceInfo() end)(),
+  architecture = (function() return computer.getArchitecture() end)(),
+  bootAddress = (function() return computer.getBootAddress() end)(),
+  display = {
+    simplePrint = function(message) kernel.display.simpleBuffer:print(message) end,
+    simpleWrite = function(message) kernel.display.simpleBuffer:print(message) end,
+  },
+  kernel = {
+    readfile = function(file) return kernel.internal.readfile(file) end,
+    initModule = function(name, data)
+      assert(name ~= "", "Module name cannot be blank or nil")
+      assert(data ~= "", "Module data cannot be blank or nil")
 
+      local modfunc = load(data, "=" .. name, "bt", kernel.internal.copy(_G))
+      local success, result = pcall(modfunc)
+
+      if success and result then kernel.modules[name] = result return true
+      elseif not success then error("Module execution error:\r"..result) end
+    end,
+    getModule = function(name)
+      assert(kernel.modules[name], "Invalid module name")
+      return kernel.modules[name]
+    end,
+    thread = {
+      new = function(func, name, options) return kernel.threads:new(func, name, options) end,
+      exists = function(pid) if kernel.threads.coroutines[pid] then return true else return false end end,
+    },
+  },
+
+}
 
 kernel.internal:initialize()
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
