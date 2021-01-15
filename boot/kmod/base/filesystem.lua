@@ -215,7 +215,7 @@ end
 function filesystem.exists(path)
   if not filesystem.realPath(filesystem.path(path)) then
     return false
-  end
+  end 
   local node, rest, vnode, vrest = findNode(path)
   if not vrest or vnode.links[vrest] then -- virtual directory or symbolic link
     return true
@@ -330,7 +330,7 @@ function filesystem.makeDirectory(path)
     end
     return nil, "cannot create a directory in a virtual directory"
   end
-
+  
   function filesystem.lastModified(path)
     local node, rest, vnode, vrest = filesystem.findNode(path, false, true)
     if not node or not vnode.fs and not vrest then
@@ -341,7 +341,7 @@ function filesystem.makeDirectory(path)
     end
     return 0 -- no such file or directory
   end
-
+  
   function filesystem.mounts()
     local tmp = {}
     for path,node in pairs(filesystem.fstab) do
@@ -352,11 +352,11 @@ function filesystem.makeDirectory(path)
       if next then return table.unpack(next) end
     end
   end
-
+  
   function filesystem.link(target, linkpath)
     checkArg(1, target, "string")
     checkArg(2, linkpath, "string")
-
+  
     if filesystem.exists(linkpath) then
       return nil, "file already exists"
     end
@@ -371,12 +371,12 @@ function filesystem.makeDirectory(path)
     if not filesystem.isDirectory(linkpath_real) then
       return nil, "not a directory"
     end
-
+  
     local _, _, vnode, _ = filesystem.findNode(linkpath_real, true)
     vnode.links[filesystem.name(linkpath)] = target
     return true
   end
-
+  
   function filesystem.umount(fsOrPath)
     checkArg(1, fsOrPath, "string", "table")
     local real
@@ -388,7 +388,7 @@ function filesystem.makeDirectory(path)
     else -- table
       fs = fsOrPath
     end
-
+  
     local paths = {}
     for path,node in pairs(filesystem.fstab) do
       if real == path or addr == node.fs.address or fs == node.fs then
@@ -403,7 +403,7 @@ function filesystem.makeDirectory(path)
     end
     return #paths > 0
   end
-
+  
   function filesystem.size(path)
     local node, rest, vnode, vrest = filesystem.findNode(path, false, true)
     if not node or not vnode.fs and (not vrest or vnode.links[vrest]) then
@@ -414,7 +414,7 @@ function filesystem.makeDirectory(path)
     end
     return 0 -- no such file or directory
   end
-
+  
   function filesystem.isLink(path)
     local name = filesystem.name(path)
     local node, rest, vnode, vrest = filesystem.findNode(filesystem.path(path), false, true)
@@ -429,7 +429,7 @@ function filesystem.makeDirectory(path)
     end
     return false
   end
-
+  
   function filesystem.copy(fromPath, toPath)
     local data = false
     local input, reason = filesystem.open(fromPath, "rb")
@@ -448,13 +448,13 @@ function filesystem.makeDirectory(path)
     end
     return data == nil, reason
   end
-
+  
   local function readonly_wrap(proxy)
     checkArg(1, proxy, "table")
     if proxy.isReadOnly() then
       return proxy
     end
-
+  
     local function roerr() return nil, "filesystem is readonly" end
     return setmetatable({
       rename = roerr,
@@ -475,7 +475,7 @@ function filesystem.makeDirectory(path)
       remove = roerr,
     }, {__index=proxy})
   end
-
+  
   local function bind_proxy(path)
     local real, reason = filesystem.realPath(path)
     if not real then
@@ -514,7 +514,7 @@ function filesystem.makeDirectory(path)
     }
     return bind
   end
-
+  
   filesystem.internal = {}
   function filesystem.internal.proxy(filter, options)
     checkArg(1, filter, "string")
@@ -548,7 +548,7 @@ function filesystem.makeDirectory(path)
     end
     return proxy
   end
-
+  
   function filesystem.remove(path)
     local function removeVirtual()
       local _, _, vnode, vrest = filesystem.findNode(filesystem.path(path), false, true)
@@ -584,7 +584,7 @@ function filesystem.makeDirectory(path)
     else return nil, "no such file or directory"
     end
   end
-
+  
   function filesystem.rename(oldPath, newPath)
     if filesystem.isLink(oldPath) then
       local _, _, vnode, _ = filesystem.findNode(filesystem.path(oldPath))
@@ -612,7 +612,7 @@ function filesystem.makeDirectory(path)
       return nil, "trying to read from or write to virtual directory"
     end
   end
-
+  
   local isAutorunEnabled = nil
   local function saveConfig()
     local root = filesystem.get("/")
@@ -624,7 +624,7 @@ function filesystem.makeDirectory(path)
       end
     end
   end
-
+  
   function filesystem.isAutorunEnabled()
     if isAutorunEnabled == nil then
       local env = {}
@@ -639,7 +639,7 @@ function filesystem.makeDirectory(path)
     end
     return isAutorunEnabled
   end
-
+  
   function filesystem.setAutorunEnabled(value)
     checkArg(1, value, "boolean")
     isAutorunEnabled = value
