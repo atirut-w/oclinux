@@ -11,6 +11,7 @@ local kernel = {}
 kernel.modules = {}
 kernel.display = {
   isInitialized = false,
+  gpu = nil,
   resolution = {
     x = 0,
     y = 0
@@ -87,6 +88,7 @@ kernel.display = {
 
 kernel.threads = {
   coroutines = {},
+  cycleStartTime = 0,
   
   new = function(self, func, name, options)
     name = name or ""
@@ -107,6 +109,7 @@ kernel.threads = {
   end,
   
   cycle = function(self)
+    self.cycleStartTime = computer.uptime()
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
       if coroutine.status(current.co) == "dead" then
@@ -117,7 +120,10 @@ kernel.threads = {
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
       
-      if not success and string.find(tostring(result), "too long without yielding") then -- TODO: Do some testing
+      if not success and (
+        string.find(tostring(result), "too long without yielding") or
+        result == "pullSignal"
+      ) then
         computer.pullSignal(0.1)
       end
       if not success and current.errHandler then
@@ -196,6 +202,7 @@ system = {
   architecture = (function() return computer.getArchitecture() end)(),
   bootAddress = (function() return computer.getBootAddress() end)(),
   display = {
+    gpu = (function() return kernel.display.gpu end)(),
     simplePrint = function(message) kernel.display.simpleBuffer:print(message) end,
     simpleWrite = function(message) kernel.display.simpleBuffer:print(message) end,
   },
@@ -216,6 +223,7 @@ system = {
       return kernel.modules[name]
     end,
     thread = {
+      cycleTime = (function() return computer.uptime() - kernel.threads.cycleStartTime end)(),
       new = function(func, name, options) return kernel.threads:new(func, name, options) end,
       exists = function(pid) if kernel.threads.coroutines[pid] then return true else return false end end,
     },
