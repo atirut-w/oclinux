@@ -6,7 +6,7 @@ local component = component or require('component')
 local computer = computer or require('computer')
 local unicode = unicode or require('unicode')
 
--- Kernel table containing built-in functions. 
+-- Kernel table containing built-in functions.
 kernel = {}
 kernel.modules = {}
 kernel.display = {
@@ -15,22 +15,22 @@ kernel.display = {
     x = 0,
     y = 0
   },
-  
+
   initialize = function(self)
     if (self.isInitialized) then
       return false
     end
     self.gpu = component.proxy(component.list("gpu")())
     self.resolution.x, self.resolution.y = self.gpu.getResolution()
-    
+
     self.isInitialized = true
     return true
   end,
-  
+
   -- A very basic and barebone system for putting texts on the screen.
   simpleBuffer = {
     lineBuffer = {},
-    
+
     updateScreen = function(self)
       local gpu = kernel.display.gpu
       local resolution = kernel.display.resolution
@@ -46,7 +46,7 @@ kernel.display = {
       end
       gpu.set(1, #self.lineBuffer, self.lineBuffer[#self.lineBuffer])
     end,
-    
+
     print = function(self, text)
       text = text or ""
       text = tostring(text)
@@ -87,12 +87,12 @@ kernel.display = {
 
 kernel.threads = {
   coroutines = {},
-  
+
   new = function(self, func, name, options)
     name = name or ""
     options = options or {}
     local id = #self.coroutines + 1
-    
+
     local tData = {
       cname = name,
       -- Consider using `coroutine.wrap()`?
@@ -101,7 +101,7 @@ kernel.threads = {
     tData.inputBuffer = options.args or {} -- Rudimentary way to send stuff to the coroutine.
     tData.errHandler = options.errHandler or nil
     tData.stallProtection = options.stallProtection or false -- Temp fix for thread stall crash
-    
+
     self.coroutines[id] = tData
     return id
   end,
@@ -117,11 +117,11 @@ kernel.threads = {
         self.coroutines[i] = nil
         return
       end
-      
+
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
       -- Handle values or requests made by the thread.
-      
+
       if not success and string.find(result, "too long without yielding") then -- TODO: Do some testing
         computer.pullSignal(0.1)
       end
@@ -137,7 +137,7 @@ kernel.threads = {
 
 kernel.internal = {
   isInitialized = false,
-  
+
   readfile = function(file)
     local addr, invoke = computer.getBootAddress(), component.invoke
     local handle = assert(invoke(addr, "open", file), "Requested file "..file.." not found")
@@ -149,17 +149,17 @@ kernel.internal = {
     invoke(addr, "close", handle)
     return buffer
   end,
-  
+
   loadfile = function(file, env)
     return load(kernel.internal.readfile(file), "=" .. file, "bt", env)
   end,
-  
+
   initialize = function(self)
     if (self.isInitialized) then -- Prevent the function from running again once initialized
       return false
     end
     self.bootAddr = computer.getBootAddress()
-    
+
     kernel.display:initialize()
     kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
 
@@ -174,7 +174,7 @@ kernel.internal = {
         while true do computer.pullSignal() end
       end
     })
-    
+
     self.isInitialized = true
     return true
   end
