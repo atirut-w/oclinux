@@ -121,20 +121,6 @@ kernel.threads = {
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
       -- Handle values or requests made by the thread.
-      if success and result then
-        if result.syscall then -- Deal with SysCalls
-          local syscall = result.syscall
-          -- Context for syscall functions
-          local ctx = {
-            pid = i
-          }
-          
-          local function procSyscall(call, ctx, args)
-            return (kernel.syscallList[call] or kernel.syscallList["default"])(ctx, args)
-          end
-          current.inputBuffer = procSyscall(syscall.call, ctx, syscall.args)
-        end
-      end
       
       if not success and string.find(result, "too long without yielding") then -- TODO: Do some testing
         computer.pullSignal(0.1)
@@ -147,36 +133,6 @@ kernel.threads = {
       -- if current.stallProtection then computer.pullSignal(0.1) end -- Temp fix for thread stall crash
     end
   end
-}
-
--- TODO: Consider looking for a better implementation
-kernel.syscallList = {
-  ["default"] = function() error("Invalid syscall", 4) end,
-  ["getDisplay"] = function() return kernel.display end,
-  ["getSystem"] = function() return {
-    bootAddress = computer.getBootAddress(),
-  } end,
-  ["readfile"] = function(ctx, file) return kernel.internal.readfile(file) end,
-  ["kernel.initModule"] = function(ctx, args)
-    -- This function basically compile modstring into a function and execute it with a stripped down ENV
-    -- then put the table that the module returned into `kernel.modules`
-    assert(args, "Not enough or no arguments")
-    assert(args[1] or args[1] ~= "", "Module string is blank or nil")
-    assert(args[2] or args[2] ~= "", "Module name is blank or nil")
-
-    local modstring, modname = args[1], args[2]
-    local modfunc = load(modstring, "=" .. modname, "bt", kernel.internal.baseEnv)
-    local success, result = pcall(modfunc)
-
-    if success and result then kernel.modules[modname] = result return true
-    elseif not success then error("Module execution error:\r"..result, 0) end
-  end,
-  ["kernel.getModule"] = function(ctx, name)
-    assert(kernel.modules[name], "Invalid module name")
-    return kernel.modules[name]
-  end,
-  ["threads.new"] = function(ctx, args) return kernel.threads:new(args[1], args[2], args[3]) end,
-  ["threads.exists"] = function(ctx, pid) if kernel.threads.coroutines[pid] then return true else return false end end,
 }
 
 kernel.internal = {
@@ -207,7 +163,7 @@ kernel.internal = {
     kernel.display:initialize()
     kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
 
-    kernel.threads:new(self.loadfile("/sbin/init.lua", kernel.internal.baseEnv), "init", {
+    kernel.threads:new(self.loadfile("/sbin/init.lua", _G), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
         local print = function(a) kernel.display.simpleBuffer:print(a) end
@@ -223,26 +179,6 @@ kernel.internal = {
     return true
   end
 }
-
--- TODO: Replace this with a copy of _G
-kernel.internal.baseEnv = {
-  coroutine = coroutine,
-  checkArg = checkArg,
-  component = component,
-  unicode = unicode,
-  type = type,
-  next = next,
-  assert = assert,
-  pairs = pairs,
-  select = select,
-  table = table,
-  tostring = tostring,
-  setmetatable = setmetatable,
-  math = math,
-  load = load,
-  error = error,
-}
-kernel.internal.baseEnv._G = kernel.internal.baseEnv
 
 kernel.internal:initialize()
 
