@@ -1,0 +1,5 @@
+globals = {
+    "component",
+    "computer",
+    "unicode",
+}
