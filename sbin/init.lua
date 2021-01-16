@@ -1,6 +1,6 @@
 _G._INITVERSION = "INDEV"
 local modDir = "/boot/kmod/base/"
-local shell = "/sbin/luashell.lua"
+local shell = "/sbin/tinyshell.lua"
 local autoRestartShell = false
 
 print = system.display.simplePrint
@@ -8,19 +8,20 @@ write = system.display.simpleWrite
 
 -- List of built-in modules to load
 local baseModules = {
-    "filesystem"
+    "filesystem",
+    "standardlib",
 }
 
 print("TinyInit v".._G._INITVERSION)
 
 print("Loading base kernel modules")
 for i=1,#baseModules do
-  write (baseModules[i].."... ")
-  local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
-  system.kernel.initModule(baseModules[i], modString)
-  coroutine.yield()
+    write (baseModules[i].."... ")
+    local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
+    system.kernel.initModule(baseModules[i], modString, false)
+    coroutine.yield()
 end
-print("Done")
+print("Done loading modules")
 
 local filesystem = system.kernel.getModule("filesystem")
 print("Mounting "..system.bootAddress.." as root(/)... ")
@@ -30,8 +31,16 @@ print("Attempting to load and execute " .. shell .."...")
 -- Load file into function
 local file = filesystem.open(shell, "r")
 assert(file, shell.." not found")
-local shellScript = file:read(math.huge)
-file:close()
+local shellScript = ""
+do
+    local buffer = ""
+    repeat
+        local data = file:read(math.huge)
+        buffer = buffer .. (data or "")
+    until not data
+    shellScript = buffer
+    file:close()
+end
 local shellFunc = load(shellScript, "=" .. shell, "t", _G)
 
 local function shellErrorHandler(err)

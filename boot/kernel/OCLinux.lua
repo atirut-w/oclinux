@@ -13,8 +13,8 @@ kernel.display = {
   isInitialized = false,
   gpu = nil,
   resolution = {
-    x = 0,
-    y = 0
+    w = 0,
+    h = 0
   },
   
   initialize = function(self)
@@ -22,7 +22,7 @@ kernel.display = {
       return false
     end
     self.gpu = component.proxy(component.list("gpu")())
-    self.resolution.x, self.resolution.y = self.gpu.getResolution()
+    self.resolution.w, self.resolution.h = self.gpu.getResolution()
     
     self.isInitialized = true
     return true
@@ -35,14 +35,14 @@ kernel.display = {
     updateScreen = function(self)
       local gpu = kernel.display.gpu
       local resolution = kernel.display.resolution
-      if #self.lineBuffer > resolution.y then
-        while #self.lineBuffer > resolution.y do
+      if #self.lineBuffer > resolution.h then
+        while #self.lineBuffer > resolution.h do
           table.remove(self.lineBuffer, 1)
         end
         -- Scroll instead of redrawing the entire screen. This reduce screen flickering.
-        gpu.copy(0, 1, resolution.x, resolution.y, 0, -1)
-        gpu.fill(1, resolution.y, resolution.x, 1, " ")
-        gpu.set(1, resolution.y, self.lineBuffer[resolution.y])
+        gpu.copy(0, 1, resolution.w, resolution.h, 0, -1)
+        gpu.fill(1, resolution.h, resolution.w, 1, " ")
+        gpu.set(1, resolution.h, self.lineBuffer[resolution.h])
         return
       end
       gpu.set(1, #self.lineBuffer, self.lineBuffer[#self.lineBuffer])
@@ -51,7 +51,7 @@ kernel.display = {
     print = function(self, text)
       text = text or ""
       text = tostring(text)
-      if text:len() > kernel.display.resolution.x then
+      if text:len() > kernel.display.resolution.w then
         local function split(str, max_line_length)
           local lines = {}
           local line
@@ -68,7 +68,7 @@ kernel.display = {
           table.insert(lines, line)
           return lines
         end
-        for _, line in ipairs(split(text, kernel.display.resolution.x)) do
+        for _, line in ipairs(split(text, kernel.display.resolution.w)) do
           self:print(line)
         end
       else
@@ -107,8 +107,9 @@ kernel.threads = {
   end,
   
   cycle = function(self)
-    for i=1,#self.coroutines do
+    for i,_ in pairs(self.coroutines) do
       local current = self.coroutines[i]
+      local startUptime = computer.uptime()
       if coroutine.status(current.co) == "dead" then
         self.coroutines[i] = nil
         return
@@ -116,6 +117,7 @@ kernel.threads = {
       
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
+      current.cpuTime = computer.uptime() - startUptime
       
       if not success and (
         string.find(tostring(result), "too long without yielding") or
@@ -161,6 +163,8 @@ kernel.internal = {
     if isSandbox == true then
       local sandbox = kernel.internal.copy(env)
       sandbox._G = sandbox
+      -- sandbox.component = nil
+      -- sandbox.computer = nil
       return load(kernel.internal.readfile(file), "=" .. file, "bt", sandbox)
     else
       return load(kernel.internal.readfile(file), "=" .. file, "bt", env)
@@ -175,7 +179,7 @@ kernel.internal = {
     kernel.display:initialize()
 
     kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
-    kernel.threads:new(self.loadfile("/sbin/init.lua", _G, true), "init", {
+    kernel.threads:new(self.loadfile("/sbin/init.lua", _G, false), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
         local print = function(a) kernel.display.simpleBuffer:print(a) end
@@ -204,11 +208,16 @@ system = {
   },
   kernel = {
     readfile = function(file) return kernel.internal.readfile(file) end,
-    initModule = function(name, data)
+    initModule = function(name, data, isSandbox)
       assert(name ~= "", "Module name cannot be blank or nil")
       assert(data ~= "", "Module data cannot be blank or nil")
 
-      local modfunc = load(data, "=" .. name, "bt", kernel.internal.copy(_G))
+      local modfunc = nil
+      if isSandbox == true then
+        modfunc = load(data, "=" .. name, "bt", kernel.internal.copy(_G))
+      else
+        modfunc = load(data, "=" .. name, "bt", _G)
+      end
       local success, result = pcall(modfunc)
 
       if success and result then kernel.modules[name] = result return true
@@ -221,6 +230,7 @@ system = {
     thread = {
       new = function(func, name, options) return kernel.threads:new(func, name, options) end,
       exists = function(pid) if kernel.threads.coroutines[pid] then return true else return false end end,
+      list = function() return kernel.threads.coroutines end,
     },
   },
 }

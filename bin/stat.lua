@@ -1,0 +1,5 @@
+print("Computer status:")
+print("\tAddress: "..computer.address())
+print("\tUptime: "..computer.uptime())
+print("\tTotal memory: "..computer.totalMemory().."("..computer.totalMemory() - computer.freeMemory().." used, "..computer.freeMemory().." free)")
+print("\tTotal thread(s): "..#system.kernel.thread.list())
