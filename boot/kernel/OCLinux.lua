@@ -109,7 +109,6 @@ kernel.threads = {
   cycle = function(self)
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
-      local cycleStartTime = computer.uptime()
       if coroutine.status(current.co) == "dead" then
         self.coroutines[i] = nil
         return
