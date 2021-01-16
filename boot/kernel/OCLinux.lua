@@ -88,7 +88,6 @@ kernel.display = {
 
 kernel.threads = {
   coroutines = {},
-  cycleStartTime = 0,
   
   new = function(self, func, name, options)
     name = name or ""
@@ -97,9 +96,7 @@ kernel.threads = {
     
     local tData = {
       cname = name,
-      -- Consider using `coroutine.wrap()`?
       co = coroutine.create(func),
-      -- cpuTime = 0.0,
     }
     tData.inputBuffer = options.args or nil -- Rudimentary way to send stuff to the coroutine.
     tData.errHandler = options.errHandler or nil
@@ -132,7 +129,6 @@ kernel.threads = {
       elseif not success then
         error(result)
       end
-      -- current.cpuTime = computer.uptime() - cycleStartTime
     end
   end
 }

@@ -18,9 +18,9 @@ for i=1,#baseModules do
   write (baseModules[i].."... ")
   local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
   system.kernel.initModule(baseModules[i], modString)
-  print("done")
   coroutine.yield()
 end
+print("Done")
 
 local filesystem = system.kernel.getModule("filesystem")
 print("Mounting "..system.bootAddress.." as root(/)... ")
