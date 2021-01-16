@@ -1,1 +1,1 @@
-print(system.display.gpu)
+print(system.bootAddress)

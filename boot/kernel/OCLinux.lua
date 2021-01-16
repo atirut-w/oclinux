@@ -99,6 +99,7 @@ kernel.threads = {
       cname = name,
       -- Consider using `coroutine.wrap()`?
       co = coroutine.create(func),
+      -- cpuTime = 0.0,
     }
     tData.inputBuffer = options.args or nil -- Rudimentary way to send stuff to the coroutine.
     tData.errHandler = options.errHandler or nil
@@ -109,9 +110,9 @@ kernel.threads = {
   end,
   
   cycle = function(self)
-    self.cycleStartTime = computer.uptime()
     for i=1,#self.coroutines do
       local current = self.coroutines[i]
+      local cycleStartTime = computer.uptime()
       if coroutine.status(current.co) == "dead" then
         self.coroutines[i] = nil
         return
@@ -131,6 +132,7 @@ kernel.threads = {
       elseif not success then
         error(result)
       end
+      -- current.cpuTime = computer.uptime() - cycleStartTime
     end
   end
 }
@@ -175,10 +177,9 @@ kernel.internal = {
       return false
     end
     self.bootAddr = computer.getBootAddress()
-    
     kernel.display:initialize()
-    kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
 
+    kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
     kernel.threads:new(self.loadfile("/sbin/init.lua", _G, true), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
@@ -197,14 +198,12 @@ kernel.internal = {
   end
 }
 
-kernel.internal:initialize()
-
 system = {
   deviceInfo = (function() return computer.getDeviceInfo() end)(),
   architecture = (function() return computer.getArchitecture() end)(),
   bootAddress = (function() return computer.getBootAddress() end)(),
   display = {
-    gpu = kernel.display.gpu,
+    getGPU = function() return kernel.display.gpu end,
     simplePrint = function(message) kernel.display.simpleBuffer:print(message) end,
     simpleWrite = function(message) kernel.display.simpleBuffer:print(message) end,
   },
@@ -233,9 +232,6 @@ system = {
 }
 
 kernel.internal:initialize()
-
-kernel.display.simpleBuffer:print(kernel.display.gpu)
-kernel.display.simpleBuffer:print(system.display.gpu)
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
   kernel.threads:cycle()
 end
