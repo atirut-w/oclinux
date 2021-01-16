@@ -219,7 +219,6 @@ system = {
       return kernel.modules[name]
     end,
     thread = {
-      cycleTime = (function() return computer.uptime() - kernel.threads.cycleStartTime end)(),
       new = function(func, name, options) return kernel.threads:new(func, name, options) end,
       exists = function(pid) if kernel.threads.coroutines[pid] then return true else return false end end,
     },

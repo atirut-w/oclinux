@@ -1,1 +1,1 @@
-print(system.bootAddress)
+print(system.display.getGPU())
