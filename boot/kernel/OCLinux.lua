@@ -11,6 +11,7 @@ local kernel = {}
 kernel.modules = {}
 kernel.display = {
   isInitialized = false,
+  gpu = nil,
   resolution = {
     x = 0,
     y = 0
@@ -95,7 +96,6 @@ kernel.threads = {
     
     local tData = {
       cname = name,
-      -- Consider using `coroutine.wrap()`?
       co = coroutine.create(func),
     }
     tData.inputBuffer = options.args or nil -- Rudimentary way to send stuff to the coroutine.
@@ -117,7 +117,10 @@ kernel.threads = {
       local success, result = coroutine.resume(current.co, current.inputBuffer)
       if current.inputBuffer then current.inputBuffer = nil end
       
-      if not success and string.find(tostring(result), "too long without yielding") then -- TODO: Do some testing
+      if not success and (
+        string.find(tostring(result), "too long without yielding") or
+        result == "pullSignal"
+      ) then
         computer.pullSignal(0.1)
       end
       if not success and current.errHandler then
@@ -169,10 +172,9 @@ kernel.internal = {
       return false
     end
     self.bootAddr = computer.getBootAddress()
-    
     kernel.display:initialize()
-    kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
 
+    kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
     kernel.threads:new(self.loadfile("/sbin/init.lua", _G, true), "init", {
       errHandler = function(err) -- Special handler.
         computer.beep(1000, 0.1)
@@ -196,6 +198,7 @@ system = {
   architecture = (function() return computer.getArchitecture() end)(),
   bootAddress = (function() return computer.getBootAddress() end)(),
   display = {
+    getGPU = function() return kernel.display.gpu end,
     simplePrint = function(message) kernel.display.simpleBuffer:print(message) end,
     simpleWrite = function(message) kernel.display.simpleBuffer:print(message) end,
   },
@@ -216,11 +219,11 @@ system = {
       return kernel.modules[name]
     end,
     thread = {
+      cycleTime = (function() return computer.uptime() - kernel.threads.cycleStartTime end)(),
       new = function(func, name, options) return kernel.threads:new(func, name, options) end,
       exists = function(pid) if kernel.threads.coroutines[pid] then return true else return false end end,
     },
   },
-
 }
 
 kernel.internal:initialize()

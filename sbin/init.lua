@@ -1,6 +1,7 @@
 _G._INITVERSION = "INDEV"
 local modDir = "/boot/kmod/base/"
 local shell = "/sbin/luashell.lua"
+local autoRestartShell = false
 
 print = system.display.simplePrint
 write = system.display.simpleWrite
@@ -10,16 +11,16 @@ local baseModules = {
     "filesystem"
 }
 
-print("Basic init for OCLinux v".._G._INITVERSION)
+print("TinyInit v".._G._INITVERSION)
 
 print("Loading base kernel modules")
 for i=1,#baseModules do
-  print(baseModules[i].."... ")
+  write (baseModules[i].."... ")
   local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
   system.kernel.initModule(baseModules[i], modString)
-  write("done")
   coroutine.yield()
 end
+print("Done")
 
 local filesystem = system.kernel.getModule("filesystem")
 print("Mounting "..system.bootAddress.." as root(/)... ")
@@ -35,13 +36,16 @@ local shellFunc = load(shellScript, "=" .. shell, "t", _G)
 
 local function shellErrorHandler(err)
     print("Shell process exited with the following error:")
-    print("    "..err)
+    print("    "..(err or "not specified"))
 end
 local shellProcessID = system.kernel.thread.new(shellFunc, shell, {errHandler = shellErrorHandler})
 
-while true do
+local running = true
+while running do
     coroutine.yield()
-    if not system.kernel.thread.exists(shellProcessID) then
+    if autoRestartShell and not system.kernel.thread.exists(shellProcessID) then
         shellProcessID = system.kernel.thread.new(shellFunc, shell, {errHandler = shellErrorHandler})
+    elseif not system.kernel.thread.exists(shellProcessID) then
+        running = false
     end
 end
