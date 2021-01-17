@@ -1,7 +1,7 @@
 local gpu = system.display.getGPU()
 local screenWidth, screenHeight = gpu.getResolution()
 local updates = 0
-local interval = 50
+local interval = 10
 
 function hud()
     while true do

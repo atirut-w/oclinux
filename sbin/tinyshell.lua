@@ -135,7 +135,8 @@ while running do
             isReadyForInput = false
 
             if filesystem.exists(input) and filesystem.isDirectory(input) == false then
-                local userCommandPID = dofileThreaded(input)
+                local userCommandPID = dofileThreaded(input, {threadName = "user command"})
+                print(input.." thread dispatched(PID is "..userCommandPID..")")
                 while system.kernel.thread.exists(userCommandPID) do
                     coroutine.yield()
                 end

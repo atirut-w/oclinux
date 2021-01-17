@@ -102,22 +102,28 @@ kernel.threads = {
     tData.errHandler = options.errHandler or nil
     tData.stallProtection = options.stallProtection or false
     
-    self.coroutines[id] = tData
+    -- self.coroutines[id] = tData
+    table.insert(self.coroutines, id, tData)
     return id
   end,
   
   cycle = function(self)
-    for i,_ in pairs(self.coroutines) do
-      local current = self.coroutines[i]
-      local startUptime = computer.uptime()
-      if coroutine.status(current.co) == "dead" then
-        self.coroutines[i] = nil
-        return
+    for pid=1,#self.coroutines do
+      local thread = self.coroutines[pid]
+      if thread == nil then
+        -- This causes some thread to not continue until another thread yields.
+        -- TOOD: Fix thread leak without causing the said problem.
+        -- table.remove(self.coroutines, pid)
+        goto skip
+      elseif coroutine.status(thread.co) == "dead" then
+        self.coroutines[pid] = nil
+        goto skip
       end
-      
-      local success, result = coroutine.resume(current.co, current.inputBuffer)
-      if current.inputBuffer then current.inputBuffer = nil end
-      current.cpuTime = computer.uptime() - startUptime
+
+      local cycleStartTime = computer.uptime()
+      local success, result = coroutine.resume(thread.co, thread.inputBuffer)
+      if thread.inputBuffer then thread.inputBuffer = nil end
+      thread.cpuTime = computer.uptime() - cycleStartTime
       
       if not success and (
         string.find(tostring(result), "too long without yielding") or
@@ -125,11 +131,12 @@ kernel.threads = {
       ) then
         computer.pullSignal(0.1)
       end
-      if not success and current.errHandler then
-        current.errHandler(result)
+      if not success and thread.errHandler then
+        thread.errHandler(result)
       elseif not success then
         error(result)
       end
+      ::skip::
     end
   end
 }
@@ -238,6 +245,14 @@ system = {
 kernel.internal:initialize()
 while coroutine.status(kernel.threads.coroutines[1].co) ~= "dead" do
   kernel.threads:cycle()
+
+  -- Clean up nil threads
+  -- for pid=1,#kernel.threads.coroutines do
+  --   local thread = kernel.threads.coroutines[pid]
+  --   if thread == nil then
+  --     table.remove(kernel.threads.coroutines, pid)
+  --   end
+  -- end
 end
 
 kernel.display.simpleBuffer:print("Init has returned.")
