@@ -47,13 +47,13 @@ local function shellErrorHandler(err)
     print("Shell process exited with the following error:")
     print("    "..(err or "not specified"))
 end
-local shellProcessID = system.kernel.thread.new(shellFunc, shell, {errHandler = shellErrorHandler})
+local shellProcessID = system.kernel.thread.new(shellFunc, shell, {errorHandler = shellErrorHandler})
 
 local running = true
 while running do
     coroutine.yield()
     if autoRestartShell and not system.kernel.thread.exists(shellProcessID) then
-        shellProcessID = system.kernel.thread.new(shellFunc, shell, {errHandler = shellErrorHandler})
+        shellProcessID = system.kernel.thread.new(shellFunc, shell, {errorHandler = shellErrorHandler})
     elseif not system.kernel.thread.exists(shellProcessID) then
         running = false
     end
