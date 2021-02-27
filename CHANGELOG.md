@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Introduced CHANGELOG.md with semantic versioning.
+- Added `getIndex`, `get` and `kill` function to the thread scheduler. These are self-explanatory and receives a PID as argument.
+- Added thread status(not to be confused with the coroutine status). As of this commit, a "suspended" status will cause the scheduler to skip the execution of the suspended thread.
 
 ### Changed
 - Updated `standardlib.lua` to use the new `errorHandler` parameter instead of the old one.
