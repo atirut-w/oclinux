@@ -166,8 +166,6 @@ kernel.internal = {
         if isSandbox == true then
             local sandbox = kernel.internal.copy(env)
             sandbox._G = sandbox
-            -- sandbox.component = nil
-            -- sandbox.computer = nil
             return load(kernel.internal.readfile(file), "=" .. file, "bt", sandbox)
         else
             return load(kernel.internal.readfile(file), "=" .. file, "bt", env)
@@ -241,14 +239,6 @@ system = {
 kernel.internal:initialize()
 while coroutine.status(kernel.thread.threads[1].coroutine) ~= "dead" do
     kernel.thread:cycle()
-    
-    -- Clean up nil threads
-    -- for pid=1,#kernel.threads.coroutines do
-    --   local thread = kernel.threads.coroutines[pid]
-    --   if thread == nil then
-    --     table.remove(kernel.threads.coroutines, pid)
-    --   end
-    -- end
 end
 
 kernel.display.simpleBuffer:print("Init has returned.")
