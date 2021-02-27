@@ -97,6 +97,7 @@ kernel.thread = {
         local threadData = {
             name = name,
             pid = pid,
+            status = "normal",
             coroutine = coroutine.create(func),
             cpuTime = 0,
 
@@ -114,6 +115,8 @@ kernel.thread = {
             if coroutine.status(thread.coroutine) == "dead" then
                 table.remove(self.threads, i)
                 goto skipThread
+            elseif thread.status == "suspended" then
+                goto skipThread
             end
 
             local startTime = computer.uptime()
@@ -129,12 +132,24 @@ kernel.thread = {
         end
     end,
 
-    exists = function(self, pid)
-        for _,thread in ipairs(self.threads) do
-            if thread.pid == pid and coroutine.status(thread.coroutine) ~= "dead" then
-                return true
+    getIndex = function(self, pid)
+        for index,thread in ipairs(self.threads) do
+            if thread.pid == pid then
+                return index
             end
         end
+    end,
+
+    get = function(self, pid)
+        if self:getIndex(pid) then return self.threads[self:getIndex(pid)] end
+    end,
+
+    kill = function(self, pid)
+        if self:exists(pid) then self.threads[self:getIndex(pid)] = nil end
+    end,
+
+    exists = function(self, pid)
+        if self:get(pid) then return true end
     end
 }
 
@@ -231,6 +246,9 @@ system = {
         end,
         thread = {
             new = function(func, name, options) return kernel.thread:new(func, name, options) end,
+            getIndex = function(pid) return kernel.thread:getIndex(pid) end,
+            get = function(pid) return kernel.thread:get(pid) end,
+            kill = function(pid) return kernel.thread:kill(pid) end,
             exists = function(pid) return kernel.thread:exists(pid) end,
             list = function() return kernel.thread.threads end,
         },
@@ -238,7 +256,7 @@ system = {
 }
 
 kernel.internal:initialize()
-while coroutine.status(kernel.thread.threads[1].coroutine) ~= "dead" do
+while kernel.thread:exists(1) do
     kernel.thread:cycle()
 end
 
