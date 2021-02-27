@@ -7,3 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Introduced CHANGELOG.md with semantic versioning.
+
+### Changed
+- Updated `standardlib.lua` to use the new `errorHandler` parameter instead of the old one.
+- TinyShell now use a custom error handler for threads. This prevent programs from crashing everything along with it.
