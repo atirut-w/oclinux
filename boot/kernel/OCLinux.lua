@@ -101,6 +101,7 @@ kernel.thread = {
             cpuTime = 0,
 
             errorHandler = (options.errorHandler or nil),
+            argument = (options.argument or nil)
         }
         table.insert(self.threads, threadData)
 
@@ -116,7 +117,7 @@ kernel.thread = {
             end
 
             local startTime = computer.uptime()
-            local success, result = coroutine.resume(thread.coroutine)
+            local success, result = coroutine.resume(thread.coroutine, thread.argument)
             thread.cpuTime = computer.uptime() - startTime
 
             if not success and thread.errorHandler then
