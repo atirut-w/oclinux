@@ -38,6 +38,6 @@ function dofileThreaded(path, option)
 
     local func = load(script, "=" .. path, "bt", _G)
     return system.kernel.thread.new(func, (option.threadName or "dofile thread"), {
-        errHandler = (option.errHandler or function() end)
+        errorHandler = (option.errorHandler or function() end)
     })
 end
