@@ -37,7 +37,7 @@ function dofileThreaded(path, option)
     end
 
     local func = load(script, "=" .. path, "bt", _G)
-    return system.kernel.thread.new(func, (option.threadName or "dofile thread"), {
+    return os.thread:new(func, (option.threadName or "dofile thread"), {
         errorHandler = (option.errorHandler or function() end)
     })
 end

@@ -86,7 +86,7 @@ kernel.display = {
 }
 }
 
-kernel.thread = {
+os.thread = {
     threads = {},
     nextPID = 1,
     
@@ -196,7 +196,7 @@ kernel.internal = {
         kernel.display:initialize()
         
         kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
-        kernel.thread:new(self.loadfile("/sbin/init.lua", _G, false), "init", {
+        os.thread:new(self.loadfile("/sbin/init.lua", _G, false), "init", {
             errorHandler = function(err) -- Special handler.
                 computer.beep(1000, 0.1)
                 local print = function(a) kernel.display.simpleBuffer:print(a) end
@@ -244,20 +244,12 @@ system = {
             assert(kernel.modules[name], "Invalid module name")
             return kernel.modules[name]
         end,
-        thread = {
-            new = function(func, name, options) return kernel.thread:new(func, name, options) end,
-            getIndex = function(pid) return kernel.thread:getIndex(pid) end,
-            get = function(pid) return kernel.thread:get(pid) end,
-            kill = function(pid) return kernel.thread:kill(pid) end,
-            exists = function(pid) return kernel.thread:exists(pid) end,
-            list = function() return kernel.thread.threads end,
-        },
     },
 }
 
 kernel.internal:initialize()
-while kernel.thread:exists(1) do
-    kernel.thread:cycle()
+while os.thread:exists(1) do
+    os.thread:cycle()
 end
 
 kernel.display.simpleBuffer:print("Init has returned.")

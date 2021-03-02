@@ -143,7 +143,7 @@ while running do
                     end
                 })
                 -- Wait for the created thread to finish execution
-                while system.kernel.thread.exists(userCommandPID) do
+                while os.thread:exists(userCommandPID) do
                     coroutine.yield()
                 end
             elseif filesystem.isDirectory(input) then
