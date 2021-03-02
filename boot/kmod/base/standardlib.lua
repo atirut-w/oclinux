@@ -23,6 +23,7 @@ end
 
 function dofileThreaded(path, option)
     option = option or {}
+    option.errorHandler = option.errorHandler or function() end
     local file = filesystem.open(path, "r")
     assert(file, path.." not found")
     local script = ""
@@ -37,7 +38,5 @@ function dofileThreaded(path, option)
     end
 
     local func = load(script, "=" .. path, "bt", _G)
-    return os.thread:new(func, (option.threadName or "dofile thread"), {
-        errorHandler = (option.errorHandler or function() end)
-    })
+    return os.thread:new(func, (option.threadName or "dofile thread"), option)
 end
