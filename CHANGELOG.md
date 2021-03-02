@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Moved `system.kernel.thread` to `os.thread`.
+- Remade the basic display functionalities of the kernel and moved them over to `os.simpleDisplay`.
 
 ## [0.1.0] - 2021-02-28
 ### Added

@@ -9,82 +9,23 @@ local computer = computer or require('computer')
 -- Kernel table containing built-in functions.
 local kernel = {}
 kernel.modules = {}
-kernel.display = {
-    isInitialized = false,
+os.simpleDisplay = {
     gpu = nil,
-    resolution = {
-        w = 0,
-        h = 0
-    },
-    
-    initialize = function(self)
-        if (self.isInitialized) then
-            return false
-        end
-        self.gpu = component.proxy(component.list("gpu")())
-        self.resolution.w, self.resolution.h = self.gpu.getResolution()
-        
-        self.isInitialized = true
-        return true
-    end,
-    
-    -- A very basic and barebone system for putting texts on the screen.
-    simpleBuffer = {
-        lineBuffer = {},
-        
-        updateScreen = function(self)
-            local gpu = kernel.display.gpu
-            local resolution = kernel.display.resolution
-            if #self.lineBuffer > resolution.h then
-                while #self.lineBuffer > resolution.h do
-                    table.remove(self.lineBuffer, 1)
-                end
-                -- Scroll instead of redrawing the entire screen. This reduce screen flickering.
-                gpu.copy(0, 1, resolution.w, resolution.h, 0, -1)
-                gpu.fill(1, resolution.h, resolution.w, 1, " ")
-                gpu.set(1, resolution.h, self.lineBuffer[resolution.h])
-                return
-            end
-            gpu.set(1, #self.lineBuffer, self.lineBuffer[#self.lineBuffer])
-        end,
-        
-        print = function(self, text)
-            text = text or ""
-            text = tostring(text)
-            if text:len() > kernel.display.resolution.w then
-                local function split(str, max_line_length)
-                    local lines = {}
-                    local line
-                    str:gsub('(%s*)(%S+)',
-                    function(spc, word)
-                        if not line or #line + #spc + #word > max_line_length then
-                            table.insert(lines, line)
-                            line = word
-                        else
-                            line = line..spc..word
-                        end
-                    end
-                )
-                table.insert(lines, line)
-                return lines
-            end
-            for _, line in ipairs(split(text, kernel.display.resolution.w)) do
-                self:print(line)
-            end
-        else
-            table.insert(self.lineBuffer, text)
-        end
-        self:updateScreen()
-    end,
-    
-    write = function(self, text)
-        text = text or ""
-        text = tostring(text)
-        self.lineBuffer[#self.lineBuffer] = self.lineBuffer[#self.lineBuffer]..text
-        self:updateScreen()
+    screenWidth = nil,
+    screenHeight = nil,
+    cursorY = 1,
+}
+
+function os.simpleDisplay.status(msg)
+    local simpleDisplay = os.simpleDisplay
+    simpleDisplay.gpu.set(1, simpleDisplay.cursorY, msg)
+    if simpleDisplay.cursorY == simpleDisplay.screenHeight then
+        simpleDisplay.gpu.copy(1, 2, simpleDisplay.screenWidth, simpleDisplay.screenHeight - 1, 0, -1)
+        simpleDisplay.gpu.fill(1, simpleDisplay.screenHeight, simpleDisplay.screenWidth, 1, " ")
+    else
+        simpleDisplay.cursorY = simpleDisplay.cursorY + 1
     end
-}
-}
+end
 
 os.thread = {
     threads = {},
@@ -193,13 +134,15 @@ kernel.internal = {
             return false
         end
         self.bootAddr = computer.getBootAddress()
-        kernel.display:initialize()
+        os.simpleDisplay.gpu = component.proxy(component.list("gpu")())
+        os.simpleDisplay.screenWidth, os.simpleDisplay.screenHeight = os.simpleDisplay.gpu.getResolution()
         
-        kernel.display.simpleBuffer:print("Loading and executing /sbin/init.lua")
+        os.simpleDisplay.status("Loading and executing /sbin/init.lua")
+        
         os.thread:new(self.loadfile("/sbin/init.lua", _G, false), "init", {
             errorHandler = function(err) -- Special handler.
                 computer.beep(1000, 0.1)
-                local print = function(a) kernel.display.simpleBuffer:print(a) end
+                local print = function(a) os.simpleDisplay.status(a) end
                 print("Error whilst executing init:")
                 print("  "..tostring(err))
                 print("")
@@ -219,9 +162,9 @@ system = {
     architecture = (function() return computer.getArchitecture() end)(),
     bootAddress = (function() return computer.getBootAddress() end)(),
     display = {
-        getGPU = function() return kernel.display.gpu end,
-        simplePrint = function(message) kernel.display.simpleBuffer:print(message) end,
-        simpleWrite = function(message) kernel.display.simpleBuffer:print(message) end,
+        -- getGPU = function() return os.simpleDisplay.gpu end,
+        -- simplePrint = function(message) os.simpleDisplay.status(message) end,
+        -- simpleWrite = function(message) os.simpleDisplay.status(message) end,
     },
     kernel = {
         readfile = function(file) return kernel.internal.readfile(file) end,
@@ -252,4 +195,4 @@ while os.thread:exists(1) do
     os.thread:cycle()
 end
 
-kernel.display.simpleBuffer:print("Init has returned.")
+os.simpleDisplay.status("Init has returned.")

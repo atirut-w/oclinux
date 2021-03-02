@@ -3,8 +3,7 @@ local modDir = "/boot/kmod/base/"
 local shell = "/sbin/tinyshell.lua"
 local autoRestartShell = false
 
-print = system.display.simplePrint
-write = system.display.simpleWrite
+print = os.simpleDisplay.status
 
 -- List of built-in modules to load
 local baseModules = {
@@ -16,7 +15,7 @@ print("TinyInit v".._G._INITVERSION)
 
 print("Loading base kernel modules")
 for i=1,#baseModules do
-    write (baseModules[i].."... ")
+    print (baseModules[i].."... ")
     local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
     system.kernel.initModule(baseModules[i], modString, false)
     coroutine.yield()
