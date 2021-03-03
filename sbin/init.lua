@@ -17,12 +17,12 @@ print("Loading base kernel modules")
 for i=1,#baseModules do
     print (baseModules[i].."... ")
     local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
-    system.kernel.initModule(baseModules[i], modString, false)
+    os.kernel.initModule(baseModules[i], modString, false)
     coroutine.yield()
 end
 print("Done loading modules")
 
-local filesystem = system.kernel.getModule("filesystem")
+local filesystem = os.kernel.getModule("filesystem")
 print("Mounting "..system.bootAddress.." as root(/)... ")
 filesystem.mount(system.bootAddress, "/")
 

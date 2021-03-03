@@ -1,6 +1,6 @@
 local _VERSION = "test release"
 local gpu = os.simpleDisplay.gpu
-local filesystem = system.kernel.getModule("filesystem")
+local filesystem = os.kernel.getModule("filesystem")
 local keyCodes = dofile("/lib/keyboard.lua").keys
 local screenWidth, screenHeight = gpu.getResolution()
 local cursorPos = {

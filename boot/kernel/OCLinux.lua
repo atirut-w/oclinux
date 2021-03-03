@@ -8,7 +8,8 @@ local computer = computer or require('computer')
 
 -- Kernel table containing built-in functions.
 local kernel = {}
-kernel.modules = {}
+os.kernel = {}
+os.kernel.modules = {}
 os.simpleDisplay = {
     gpu = nil,
     screenWidth = nil,
@@ -159,36 +160,33 @@ kernel.internal = {
     end
 }
 
+function os.kernel.initModule(name, data, isSandbox)
+    assert(name ~= "", "Module name cannot be blank or nil")
+    assert(data ~= "", "Module data cannot be blank or nil")
+    
+    local modfunc = nil
+    if isSandbox == true then
+        modfunc = load(data, "=" .. name, "bt", kernel.internal.copy(_G))
+    else
+        modfunc = load(data, "=" .. name, "bt", _G)
+    end
+    local success, result = pcall(modfunc)
+    
+    if success and result then os.kernel.modules[name] = result return true
+    elseif not success then error("Module execution error:\r"..result) end
+end
+
+function os.kernel.getModule(name)
+    assert(os.kernel.modules[name], "Invalid module name")
+    return os.kernel.modules[name]
+end
+
 system = {
     deviceInfo = (function() return computer.getDeviceInfo() end)(),
     architecture = (function() return computer.getArchitecture() end)(),
     bootAddress = (function() return computer.getBootAddress() end)(),
-    display = {
-        -- getGPU = function() return os.simpleDisplay.gpu end,
-        -- simplePrint = function(message) os.simpleDisplay.status(message) end,
-        -- simpleWrite = function(message) os.simpleDisplay.status(message) end,
-    },
     kernel = {
         readfile = function(file) return kernel.internal.readfile(file) end,
-        initModule = function(name, data, isSandbox)
-            assert(name ~= "", "Module name cannot be blank or nil")
-            assert(data ~= "", "Module data cannot be blank or nil")
-            
-            local modfunc = nil
-            if isSandbox == true then
-                modfunc = load(data, "=" .. name, "bt", kernel.internal.copy(_G))
-            else
-                modfunc = load(data, "=" .. name, "bt", _G)
-            end
-            local success, result = pcall(modfunc)
-            
-            if success and result then kernel.modules[name] = result return true
-            elseif not success then error("Module execution error:\r"..result) end
-        end,
-        getModule = function(name)
-            assert(kernel.modules[name], "Invalid module name")
-            return kernel.modules[name]
-        end,
     },
 }
 

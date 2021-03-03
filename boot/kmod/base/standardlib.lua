@@ -1,4 +1,4 @@
-local filesystem = system.kernel.getModule("filesystem")
+local filesystem = os.kernel.getModule("filesystem")
 
 function dofile(path)
     local file = filesystem.open(path, "r")
