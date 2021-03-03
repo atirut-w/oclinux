@@ -64,6 +64,8 @@ os.thread = {
             local success, result = coroutine.resume(thread.coroutine, thread.argument)
             thread.cpuTime = computer.uptime() - startTime
 
+            if thread.argument ~= nil then thread.argument = nil end
+
             if not success and thread.errorHandler then
                 thread.errorHandler(result)
             elseif not success then
