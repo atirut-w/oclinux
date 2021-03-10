@@ -181,14 +181,7 @@ function os.kernel.getModule(name)
     return os.kernel.modules[name]
 end
 
-system = {
-    deviceInfo = (function() return computer.getDeviceInfo() end)(),
-    architecture = (function() return computer.getArchitecture() end)(),
-    bootAddress = (function() return computer.getBootAddress() end)(),
-    kernel = {
-        readfile = function(file) return kernel.internal.readfile(file) end,
-    },
-}
+os.kernel.readfile = function(file) return kernel.internal.readfile(file) end
 
 kernel.internal:initialize()
 while os.thread:exists(1) do

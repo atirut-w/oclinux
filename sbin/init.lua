@@ -16,15 +16,15 @@ print("TinyInit v".._G._INITVERSION)
 print("Loading base kernel modules")
 for i=1,#baseModules do
     print (baseModules[i].."... ")
-    local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
+    local modString = os.kernel.readfile(modDir..baseModules[i]..".lua")
     os.kernel.initModule(baseModules[i], modString, false)
     coroutine.yield()
 end
 print("Done loading modules")
 
 local filesystem = os.kernel.getModule("filesystem")
-print("Mounting "..system.bootAddress.." as root(/)... ")
-filesystem.mount(system.bootAddress, "/")
+print("Mounting "..computer.getBootAddress().." as root(/)... ")
+filesystem.mount(computer.getBootAddress(), "/")
 
 print("Attempting to load and execute " .. shell .."...")
 -- Load file into function
