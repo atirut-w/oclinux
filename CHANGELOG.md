@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ## Added
-- You can now pass arguments into processes spawned by `dofileThreaded1` via an option table parameter "`argument`"
+- You can now pass arguments into processes spawned by `dofileThreaded` via an option table parameter "`argument`"
 
 ### Changed
 - The scheduler now clear thread arguments after the initial thread execution.
