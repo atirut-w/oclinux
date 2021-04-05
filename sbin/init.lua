@@ -3,8 +3,7 @@ local modDir = "/boot/kmod/base/"
 local shell = "/sbin/tinyshell.lua"
 local autoRestartShell = false
 
-print = system.display.simplePrint
-write = system.display.simpleWrite
+print = os.simpleDisplay.status
 
 -- List of built-in modules to load
 local baseModules = {
@@ -16,16 +15,16 @@ print("TinyInit v".._G._INITVERSION)
 
 print("Loading base kernel modules")
 for i=1,#baseModules do
-    write (baseModules[i].."... ")
-    local modString = system.kernel.readfile(modDir..baseModules[i]..".lua")
-    system.kernel.initModule(baseModules[i], modString, false)
+    print (baseModules[i].."... ")
+    local modString = os.kernel.readfile(modDir..baseModules[i]..".lua")
+    os.kernel.initModule(baseModules[i], modString, false)
     coroutine.yield()
 end
 print("Done loading modules")
 
-local filesystem = system.kernel.getModule("filesystem")
-print("Mounting "..system.bootAddress.." as root(/)... ")
-filesystem.mount(system.bootAddress, "/")
+local filesystem = os.kernel.getModule("filesystem")
+print("Mounting "..computer.getBootAddress().." as root(/)... ")
+filesystem.mount(computer.getBootAddress(), "/")
 
 print("Attempting to load and execute " .. shell .."...")
 -- Load file into function
@@ -47,14 +46,14 @@ local function shellErrorHandler(err)
     print("Shell process exited with the following error:")
     print("    "..(err or "not specified"))
 end
-local shellProcessID = system.kernel.thread.new(shellFunc, shell, {errorHandler = shellErrorHandler})
+local shellProcessID = os.thread:new(shellFunc, shell, {errorHandler = shellErrorHandler})
 
 local running = true
 while running do
     coroutine.yield()
-    if autoRestartShell and not system.kernel.thread.exists(shellProcessID) then
-        shellProcessID = system.kernel.thread.new(shellFunc, shell, {errorHandler = shellErrorHandler})
-    elseif not system.kernel.thread.exists(shellProcessID) then
+    if autoRestartShell and not os.thread:exists(shellProcessID) then
+        shellProcessID = os.thread:new(shellFunc, shell, {errorHandler = shellErrorHandler})
+    elseif not os.thread:exists(shellProcessID) then
         running = false
     end
 end

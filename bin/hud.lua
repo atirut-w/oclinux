@@ -1,4 +1,4 @@
-local gpu = system.display.getGPU()
+local gpu = os.simpleDisplay.gpu
 local screenWidth, screenHeight = gpu.getResolution()
 local updates = 0
 local interval = 10
@@ -22,4 +22,4 @@ function hud()
     end
 end
 
-system.kernel.thread.new(hud, "mem hud")
+os.thread:new(hud, "mem hud")

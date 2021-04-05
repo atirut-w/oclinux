@@ -1,6 +1,6 @@
 local _VERSION = "test release"
-local gpu = system.display.getGPU()
-local filesystem = system.kernel.getModule("filesystem")
+local gpu = os.simpleDisplay.gpu
+local filesystem = os.kernel.getModule("filesystem")
 local keyCodes = dofile("/lib/keyboard.lua").keys
 local screenWidth, screenHeight = gpu.getResolution()
 local cursorPos = {
@@ -143,7 +143,7 @@ while running do
                     end
                 })
                 -- Wait for the created thread to finish execution
-                while system.kernel.thread.exists(userCommandPID) do
+                while os.thread:exists(userCommandPID) do
                     coroutine.yield()
                 end
             elseif filesystem.isDirectory(input) then

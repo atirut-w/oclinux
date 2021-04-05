@@ -3,7 +3,7 @@ print("\tAddress: "..computer.address())
 print("\tUptime: "..computer.uptime())
 print("\tTotal memory: "..computer.totalMemory().."("..computer.totalMemory() - computer.freeMemory().." used, "..computer.freeMemory().." free)")
 
-local threadList = system.kernel.thread.list()
+local threadList = os.thread.threads
 print("\tTotal thread(s): "..#threadList)
 print("\t\tPID, NAME, CPU TIME, STATUS")
 coroutine.yield() -- Make sure we get every task by waiting one cycle

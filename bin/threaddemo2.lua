@@ -11,5 +11,5 @@ local function rainbowSide()
 end
 
 print("Me tryna launch a thread")
-system.kernel.thread.new(rainbowSide, "number strip")
+os.thread:new(rainbowSide, "number strip")
 print("Launched and ready to go!")
