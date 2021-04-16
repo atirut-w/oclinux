@@ -10,101 +10,13 @@ local computer = computer or require('computer')
 -- Kernel table containing built-in functions.
 local kernel = {}
 os.kernel = {
-    _BUILDTIME = "Fri 04/16/2021 09:57 PM"
+    _BUILDTIME = $(NOW)
 }
 os.kernel.modules = {}
 
 
-os.simpleDisplay = {
-    gpu = nil,
-    screenWidth = nil,
-    screenHeight = nil,
-    cursorY = 1,
-}
-
-function os.simpleDisplay.status(msg)
-    local simpleDisplay = os.simpleDisplay
-    simpleDisplay.gpu.set(1, simpleDisplay.cursorY, msg)
-    if simpleDisplay.cursorY == simpleDisplay.screenHeight then
-        simpleDisplay.gpu.copy(1, 2, simpleDisplay.screenWidth, simpleDisplay.screenHeight - 1, 0, -1)
-        simpleDisplay.gpu.fill(1, simpleDisplay.screenHeight, simpleDisplay.screenWidth, 1, " ")
-    else
-        simpleDisplay.cursorY = simpleDisplay.cursorY + 1
-    end
-end
-
-os.simpleDisplay.gpu = component.proxy(component.list("gpu")())
-os.simpleDisplay.screenWidth, os.simpleDisplay.screenHeight = os.simpleDisplay.gpu.getResolution()
-
-os.thread = {
-    threads = {},
-    nextPID = 1,
-    
-    new = function(self, func, name, options)
-        local options = options or {}
-        local pid = self.nextPID
-
-        local threadData = {
-            name = name,
-            pid = pid,
-            status = "normal",
-            coroutine = coroutine.create(func),
-            cpuTime = 0,
-
-            errorHandler = (options.errorHandler or nil),
-            argument = (options.argument or nil)
-        }
-        table.insert(self.threads, threadData)
-
-        self.nextPID = self.nextPID + 1
-        return pid
-    end,
-    
-    cycle = function(self)
-        for i,thread in ipairs(self.threads) do
-            if coroutine.status(thread.coroutine) == "dead" then
-                table.remove(self.threads, i)
-                goto skipThread
-            elseif thread.status == "suspended" then
-                goto skipThread
-            end
-
-            local startTime = computer.uptime()
-            local success, result = coroutine.resume(thread.coroutine, thread.argument)
-            thread.cpuTime = computer.uptime() - startTime
-
-            if thread.argument ~= nil then thread.argument = nil end
-
-            if not success and thread.errorHandler then
-                thread.errorHandler(result)
-            elseif not success then
-                error(result)
-            end
-            ::skipThread::
-        end
-    end,
-
-    getIndex = function(self, pid)
-        for index,thread in ipairs(self.threads) do
-            if thread.pid == pid then
-                return index
-            end
-        end
-    end,
-
-    get = function(self, pid)
-        if self:getIndex(pid) then return self.threads[self:getIndex(pid)] end
-    end,
-
-    kill = function(self, pid)
-        if self:exists(pid) then self.threads[self:getIndex(pid)] = nil end
-    end,
-
-    exists = function(self, pid)
-        if self:get(pid) then return true end
-    end
-}
-
+--#include "src/modules/simpleDisplay.lua"
+--#include "src/modules/thread.lua"
 
 local internal = {}
 
