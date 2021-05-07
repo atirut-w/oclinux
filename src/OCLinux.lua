@@ -1,5 +1,6 @@
 -- OCLinux kernel by Atirut Wattanamongkol(WattanaGaming)
-
+--#include "src/includes/object.lua"
+--#include "src/includes/switch.lua"
 _G.boot_invoke = nil
 
 -- These are needed to do literally anything.
@@ -14,6 +15,7 @@ os.kernel = {
 }
 os.kernel.modules = {}
 
+--#include "src/modules/io.lua"
 --#include "src/modules/simpleDisplay.lua"
 --#include "src/modules/thread.lua"
 
