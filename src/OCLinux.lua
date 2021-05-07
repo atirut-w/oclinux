@@ -14,7 +14,6 @@ os.kernel = {
 }
 os.kernel.modules = {}
 
-
 --#include "src/modules/simpleDisplay.lua"
 --#include "src/modules/thread.lua"
 

@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Use LuaComp to build the kernel so that I won't have to write everything for the kernel in a single file(huge chunk of codes are tedious to work with).
+- Use Make to automate the compilation and installation process.
+
+### Changed
+- The codes for the kernel is now split into multiple files. They have to be built with LuaComp before you can use them.
+
+### Removed
+- The full kernel is now excluded from the repository. You now have to build the kernel with LuaComp.
 
 # [1.0.0] - 2021-04-05
 ### Added
