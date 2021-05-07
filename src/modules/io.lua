@@ -1,18 +1,27 @@
 -- io.lua: reimplementation of Lua's IO library
-io = {}
+io = {
+    stderr = nil,
+    stdin = nil,
+    stdout = nil
+}
 
 -- Base object for file descriptors.
 io.file = object:new({
+    path = nil,
+    temp = false,
     proxy = nil,
     handle = nil,
-    buffer = {},
+    buffer = "",
 
     close = function(self)
         self.proxy.close(self.handle)
+        if self.temp == true then
+            self.proxy.remove(self.path)
+        end
     end,
 
     flush = function(self)
-        self.proxy.write(self.handle, table.concat(self.buffer))
+        self.proxy.write(self.handle, self.buffer)
     end,
 
     read = function(self, mode)
@@ -35,15 +44,7 @@ io.file = object:new({
     end,
 
     write = function(self, ...)
-        if #{...} == 0 then
-            return
-        elseif #{...} == 1 then
-            table.insert(self.buffer, ...)
-        elseif #{...} > 1 then
-            for _,value in ipairs({...}) do
-                table.insert(self.buffer, value)
-            end
-        end
+        self.buffer = self.buffer..table.concat({...})
     end,
 })
 
@@ -52,7 +53,55 @@ function io.open(path, mode)
     mode = mode or "r"
     local fs = component.proxy(computer.getBootAddress())
     return io.file:new({
+        path = path,
         proxy = fs,
         handle = fs.open(path, mode)
     })
+end
+
+function io.close(file)
+    if file then
+        file:close()
+    else
+        io.stdout:close()
+    end
+end
+
+function io.flush(file)
+    if file then
+        file:flush()
+    else
+        io.stdout:flush()
+    end
+end
+
+function io.input(file)
+    if file then
+        io.stdin = io.open(file, "r")
+    else
+        return io.stdin
+    end
+end
+
+function io.output(file)
+    if file then
+        io.stdout = io.open(file, "w")
+    else
+        return io.stdout
+    end
+end
+
+function io.tmpfile()
+    local fs = component.proxy(computer.getBootAddress())
+    local path = string.format("%x", math.random(0x0000, 0xFFFF))
+    return io.file:new({
+        path = path,
+        temp = true,
+        proxy = fs,
+        handle = fs.open(path, "w")
+    })
+end
+
+function io.write(...)
+    io.output():write(...)
 end

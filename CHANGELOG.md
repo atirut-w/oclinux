@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Use LuaComp to build the kernel so that I won't have to write everything for the kernel in a single file(huge chunk of codes are tedious to work with).
 - Use Make to automate the compilation and installation process.
+- Reimplemented Lua's IO library.
 
 ### Changed
 - The codes for the kernel is now split into multiple files. They have to be built with LuaComp before you can use them.
