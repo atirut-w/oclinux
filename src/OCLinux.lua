@@ -22,15 +22,10 @@ os.kernel.modules = {}
 local internal = {}
 
 internal.readfile = function(file)
-    local addr, invoke = computer.getBootAddress(), component.invoke
-    local handle = assert(invoke(addr, "open", file), "Requested file "..file.." not found")
-    local buffer = ""
-    repeat
-        local data = invoke(addr, "read", handle, math.huge)
-        buffer = buffer .. (data or "")
-    until not data
-    invoke(addr, "close", handle)
-    return buffer
+    local file = io.open(file, "r")
+    local data = file:read("a")
+    file:close()
+    return data
 end
 
 internal.copy = function(obj, seen)
