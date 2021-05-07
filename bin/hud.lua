@@ -7,8 +7,9 @@ function hud()
     while true do
         if updates == interval then
             updates = 0
-            
-            local string = " MEM USAGE: "..tostring(computer.totalMemory() - computer.freeMemory()).."/"..tostring(computer.totalMemory())
+            local used = computer.totalMemory() - computer.freeMemory()
+            local total = computer.totalMemory()
+            local string = " MEM USAGE: "..tostring(used).."/"..tostring(total).."("..math.floor(((used / total) * 100) + 0.5).."%)"
             gpu.fill((screenWidth - #string) - 4, screenHeight, screenWidth, 1, " ")
             gpu.setBackground(0x00ff00)
             gpu.setForeground(0x000000)
