@@ -9,11 +9,17 @@ io = {
 io.file = object:new({
     path = nil,
     temp = false,
+    canRead = false,
+    canWrite = false,
     proxy = nil,
     handle = nil,
-    buffer = "",
+    bufferSize = 256,
+    readBuffer = "",
+    writeBuffer = "",
 
     close = function(self)
+        if self.canWrite then self:flush() end
+        self.readBuffer = ""
         self.proxy.close(self.handle)
         if self.temp == true then
             self.proxy.remove(self.path)
@@ -21,30 +27,57 @@ io.file = object:new({
     end,
 
     flush = function(self)
-        self.proxy.write(self.handle, self.buffer)
+        if self.canWrite then
+            self.proxy.write(self.handle, self.writeBuffer)
+            self.writeBuffer = ""
+        else
+            error("cannot flush stream using "..self.mode.." mode", 2)
+        end
     end,
 
     read = function(self, mode)
         checkArg(1, mode, "string")
-        return switch(mode, {
-            ["default"] = function() error("unknown or unsupported read mode") end,
-            ["a"] = function ()
-                local buffer = ""
-                repeat
-                    -- local data, reason = component.invoke(fs,"read",handle,math.huge)
-                    local data, reason = self.proxy.read(self.handle, math.huge)
-                    if not data and reason then
-                        error(reason)
+        local fileSize = self.proxy.size(self.path)
+        local function capBuffer()
+            self.readBuffer = self.readBuffer:sub(#self.readBuffer - self.bufferSize + 1)
+        end
+        if self.canRead then
+            return switch(mode, {
+                ["default"] = function() error("read mode "..mode.." is not supported") end,
+                ["a"] = function()
+                    local i = 0
+                    if #self.readBuffer < fileSize then -- If there is not enough data in the read buffer.
+                        repeat
+                            local data, reason = self.proxy.read(self.handle, self.bufferSize)
+                            if not data and reason then
+                                error(reason)
+                            end
+                            self.readBuffer = self.readBuffer .. (data or "")
+                        until not data
                     end
-                    buffer = buffer .. (data or "")
-                until not data
-                return buffer
-            end,
-        })
+                    local ret = self.readBuffer:sub(#self.readBuffer - fileSize, #self.readBuffer)
+                    capBuffer()
+                    return ret
+                end,
+            })
+        else
+            error("cannot read stream using "..self.mode.." mode", 2)
+        end
     end,
 
     write = function(self, ...)
-        self.buffer = self.buffer..table.concat({...})
+        if self.canWrite then
+            local data = table.concat({...})
+            -- Is there enough space in the write buffer to accommodate data?
+            if #data + #self.writeBuffer <= self.bufferSize then
+                self.writeBuffer = self.writeBuffer .. data
+            else
+                self.writeBuffer = self.writeBuffer .. data
+                self:flush()
+            end
+        else
+            error("cannot write to stream using "..self.mode.." mode", 2)
+        end
     end,
 })
 
@@ -52,11 +85,16 @@ function io.open(path, mode)
     checkArg(1, path, "string")
     mode = mode or "r"
     local fs = component.proxy(computer.getBootAddress())
-    return io.file:new({
+    local file = io.file:new({
         path = path,
+        mode = mode,
         proxy = fs,
         handle = fs.open(path, mode)
     })
+    file.canRead = mode == ("r" or "r+" or "w+" or "a+")
+    file.canWrite = mode == ("w" or "r+" or "w+" or "a+")
+
+    return file
 end
 
 function io.close(file)
