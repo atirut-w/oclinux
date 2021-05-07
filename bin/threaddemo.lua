@@ -1,4 +1,4 @@
-local gpu = system.display.getGPU()
+local gpu = os.simpleDisplay.gpu
 local screenWidth, screenHeight = gpu.getResolution()
 
 local function rainbowSide()
