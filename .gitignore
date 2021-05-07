@@ -1,6 +1,6 @@
 # Directories
 build/
+.vscode/
 
 # Files
-argparse.lua
 boot/kernel/OCLinux.lua
