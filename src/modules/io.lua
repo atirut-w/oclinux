@@ -5,6 +5,15 @@ io = {}
 io.file = object:new({
     proxy = nil,
     handle = nil,
+    buffer = {},
+
+    close = function(self)
+        self.proxy.close(self.handle)
+    end,
+
+    flush = function(self)
+        self.proxy.write(self.handle, table.concat(self.buffer))
+    end,
 
     read = function(self, mode)
         checkArg(1, mode, "string")
@@ -25,13 +34,17 @@ io.file = object:new({
         })
     end,
 
-    write = function(self, value)
-        self.proxy.write(self.handle, value)
+    write = function(self, ...)
+        if #{...} == 0 then
+            return
+        elseif #{...} == 1 then
+            table.insert(self.buffer, ...)
+        elseif #{...} > 1 then
+            for _,value in ipairs({...}) do
+                table.insert(self.buffer, value)
+            end
+        end
     end,
-
-    close = function(self)
-        self.proxy.close(self.handle)
-    end
 })
 
 function io.open(path, mode)
