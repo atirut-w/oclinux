@@ -85,6 +85,7 @@ function io.open(path, mode)
     checkArg(1, path, "string")
     mode = mode or "r"
     local fs = component.proxy(computer.getBootAddress())
+    if not fs.exists(path) then return nil end
     local file = io.file:new({
         path = path,
         mode = mode,

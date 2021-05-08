@@ -4,6 +4,7 @@ local shell = "/sbin/tinyshell.lua"
 local autoRestartShell = false
 
 print = os.simpleDisplay.status
+print("TinyInit v".._G._INITVERSION)
 
 -- List of built-in modules to load
 local baseModules = {
@@ -11,13 +12,12 @@ local baseModules = {
     "standardlib",
 }
 
-print("TinyInit v".._G._INITVERSION)
-
 print("Loading base kernel modules")
 for i=1,#baseModules do
-    print (baseModules[i].."... ")
-    local modString = os.kernel.readfile(modDir..baseModules[i]..".lua")
-    os.kernel.initModule(baseModules[i], modString, false)
+    print (baseModules[i].."...")
+    local file = io.open(modDir..baseModules[i]..".lua", "r")
+    os.kernel.initModule(baseModules[i], file:read("a"), false)
+    file:close()
     coroutine.yield()
 end
 print("Done loading modules")
@@ -28,19 +28,14 @@ filesystem.mount(computer.getBootAddress(), "/")
 
 print("Attempting to load and execute " .. shell .."...")
 -- Load file into function
-local file = filesystem.open(shell, "r")
-assert(file, shell.." not found")
-local shellScript = ""
+local shellFunc
 do
-    local buffer = ""
-    repeat
-        local data = file:read(math.huge)
-        buffer = buffer .. (data or "")
-    until not data
-    shellScript = buffer
+    local file = io.open(shell, "r")
+    assert(file, shell.." not found")
+    local shellScript = file:read("a")
     file:close()
+    shellFunc = load(shellScript, "=" .. shell, "t", _G)
 end
-local shellFunc = load(shellScript, "=" .. shell, "t", _G)
 
 local function shellErrorHandler(err)
     print("Shell process exited with the following error:")
