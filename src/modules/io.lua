@@ -1,5 +1,6 @@
 -- io.lua: reimplementation of Lua's IO library
 io = {
+    bufferSize = 256,
     stderr = nil,
     stdin = nil,
     stdout = nil
@@ -13,7 +14,7 @@ io.file = object:new({
     canWrite = false,
     proxy = nil,
     handle = nil,
-    bufferSize = 256,
+    bufferSize = io.bufferSize,
     readBuffer = "",
     writeBuffer = "",
 
