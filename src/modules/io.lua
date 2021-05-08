@@ -37,28 +37,29 @@ io.file = object:new({
 
     read = function(self, mode)
         checkArg(1, mode, "string")
-        local fileSize = self.proxy.size(self.path)
-        local function capBuffer()
-            self.readBuffer = self.readBuffer:sub(#self.readBuffer - self.bufferSize + 1)
-        end
         if self.canRead then
+            local fileSize = self.proxy.size(self.path)
+            local function capBuffer()
+                self.readBuffer = self.readBuffer:sub(#self.readBuffer - self.bufferSize + 1)
+            end
+            local function read(count)
+                if #self.readBuffer < count then -- If there is not enough data in the read buffer.
+                    repeat
+                        local data, reason = self.proxy.read(self.handle, self.bufferSize)
+                        -- component.proxy(component.list("gpu")()).set(1,1,(data or "")) -- For debugging and testing.
+                        if not data and reason then
+                            error(reason)
+                        end
+                        self.readBuffer = self.readBuffer .. (data or "")
+                    until not data
+                end
+                local ret = self.readBuffer:sub(#self.readBuffer - count, #self.readBuffer)
+                capBuffer()
+                return ret
+            end
             return switch(mode, {
                 ["default"] = function() error("read mode "..mode.." is not supported") end,
-                ["a"] = function()
-                    local i = 0
-                    if #self.readBuffer < fileSize then -- If there is not enough data in the read buffer.
-                        repeat
-                            local data, reason = self.proxy.read(self.handle, self.bufferSize)
-                            if not data and reason then
-                                error(reason)
-                            end
-                            self.readBuffer = self.readBuffer .. (data or "")
-                        until not data
-                    end
-                    local ret = self.readBuffer:sub(#self.readBuffer - fileSize, #self.readBuffer)
-                    capBuffer()
-                    return ret
-                end,
+                ["a"] = function()  return read(fileSize) end,
             })
         else
             error("cannot read stream using "..self.mode.." mode", 2)
