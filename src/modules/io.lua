@@ -37,7 +37,6 @@ io.file = object:new({
     end,
 
     read = function(self, mode)
-        checkArg(1, mode, "string")
         if self.canRead then
             local fileSize = self.proxy.size(self.path)
             local function capBuffer()
@@ -58,10 +57,14 @@ io.file = object:new({
                 capBuffer()
                 return ret
             end
-            return switch(mode, {
-                ["default"] = function() error("read mode "..mode.." is not supported") end,
-                ["a"] = function()  return read(fileSize) end,
-            })
+            if type(mode) == "string" then
+                return switch(mode, {
+                    ["default"] = function() error("read mode "..mode.." is not supported") end,
+                    ["a"] = function()  return read(fileSize) end,
+                })
+            elseif type(mode) == "number" then
+                return read(mode)
+            end
         else
             error("cannot read stream using "..self.mode.." mode", 2)
         end
