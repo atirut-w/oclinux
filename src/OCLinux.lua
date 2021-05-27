@@ -2,8 +2,8 @@
 _G.boot_invoke = nil
 
 -- These are needed to do literally anything.
-local component = component or require('component')
-local computer = computer or require('computer')
+-- local component = component or require('component')
+-- local computer = computer or require('computer')
 -- local unicode = unicode or require('unicode')
 
 -- Kernel table containing built-in functions.

@@ -1,6 +1,7 @@
 # Directories
 build/
 .vscode/
+oc-docs/
 
 # Files
 boot/kernel/OCLinux.lua
