@@ -2,6 +2,10 @@ os.thread = {
     threads = {},
     nextPID = 1,
     
+    --- Creates a new thread and return the thread's PID
+    ---@param func function
+    ---@param name string
+    ---@param options table
     new = function(self, func, name, options)
         local options = options or {}
         local pid = self.nextPID
@@ -46,6 +50,8 @@ os.thread = {
         end
     end,
 
+    ---@param pid integer
+    ---@return number index
     getIndex = function(self, pid)
         for index,thread in ipairs(self.threads) do
             if thread.pid == pid then
@@ -54,14 +60,18 @@ os.thread = {
         end
     end,
 
+    ---@param pid integer
+    ---@return table thread
     get = function(self, pid)
         if self:getIndex(pid) then return self.threads[self:getIndex(pid)] end
     end,
 
+    ---@param pid integer
     kill = function(self, pid)
         if self:exists(pid) then self.threads[self:getIndex(pid)] = nil end
     end,
 
+    ---@param pid integer
     exists = function(self, pid)
         if self:get(pid) then return true end
     end

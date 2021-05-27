@@ -9,12 +9,19 @@ do
     -- Base class for file descriptors.
     -- TOOD: Implement buffering
     local file = class("file")
+
+    ---@param path string
+    ---@param mode string
+    ---@param proxy table
+    ---@param temp? boolean
     function file:initialize(path, mode, proxy, temp)
         assert(path and mode and proxy)
         self._path = path
         self._mode = mode
         self._proxy = proxy
+        ---@type integer
         self._handle = proxy.open(path, mode)
+        ---@type integer
         self._size = proxy.size(path)
         self._canRead = (mode == "r") or (mode == "r+") or (mode == "w+") or (mode == "a+")
         self._canWrite = (mode == "w") or (mode == "r+") or (mode == "w+") or (mode == "a+")
@@ -37,6 +44,7 @@ do
         -- end
     end
 
+    ---@param mode string|number
     function file:read(mode)
         if self._canRead then
             local function read(count)
@@ -115,6 +123,10 @@ end
 
 function io.output(file)
     if file then io.stdout = io.open(file, "w") else return io.stdout end
+end
+
+function io.read(file)
+    if file then file:read("*l") else io.stdout:read("*l") end
 end
 
 function io.tmpfile()

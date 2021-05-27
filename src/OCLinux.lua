@@ -8,7 +8,9 @@ local computer = computer or require('computer')
 
 -- Kernel table containing built-in functions.
 local kernel = {}
+--- The OCLinux kernel
 os.kernel = {
+    ---@type string
     _BUILDTIME = $(NOW)
 }
 os.kernel.modules = {}
