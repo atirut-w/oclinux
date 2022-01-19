@@ -11,10 +11,7 @@ do
 
     kernel.filesystem = filesystem
 end
-do
-    local success, err = kernel.filesystem.mount(computer.getBootAddress(), "/")
-    assert(success, err)
-end
+kernel.filesystem.mount(computer.getBootAddress(), "/")
 
 --#include "devfs.lua"
 --#include "console.lua"
