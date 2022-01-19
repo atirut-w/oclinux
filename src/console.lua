@@ -2,6 +2,7 @@ do
     ---@type GPUProxy
     local gpu = component.proxy(component.list("gpu")())
     local w, h = gpu.getResolution()
+    local textbuffer = gpu.allocateBuffer(w, h)
     local x, y = 1, 1
 
     local function cr()
@@ -17,6 +18,33 @@ do
         end
     end
 
+    do
+        local blink_timer = 0
+        local visible = true
+        local last_x, last_y = x, y
+
+        kernel.register_hook("timer", function(delta)
+            blink_timer = blink_timer - delta
+            if blink_timer <= 0 then
+                blink_timer = 0.5
+                visible = not visible
+
+                if visible then
+                    gpu.set(x, y, "_")
+                else
+                    gpu.bitblt(0, 1, 1, w, h, textbuffer)
+                end
+            elseif x ~= last_x or y ~= last_y then
+                -- Force cursor to be visible
+                visible = false
+                blink_timer = 0
+                -- The code above might look confusing, but look even further up to see why.
+
+                last_x, last_y = x, y
+            end
+        end)
+    end
+
     kernel.register_chrdev("console", {
         read = function(count)
             local type, _, charcode, keycode = kernel.get_signal()
@@ -26,6 +54,9 @@ do
         end,
         write = function(data)
             if data then
+                local prev_buffer = gpu.getActiveBuffer()
+                gpu.setActiveBuffer(textbuffer)
+
                 for char in data:gmatch(".") do
                     if char == "\a" then
                         computer.beep(1000, 0.1)
@@ -56,6 +87,9 @@ do
                         end
                     end
                 end
+
+                gpu.bitblt(0, 1, 1, w, h, textbuffer)
+                gpu.setActiveBuffer(prev_buffer)
             end
         end
     })
