@@ -17,6 +17,7 @@ kernel.filesystem.mount(computer.getBootAddress(), "/")
 --#include "console.lua"
 --#include "printk.lua"
 --#include "scheduler.lua"
+--#include "eventhooks.lua"
 
 local function gen_env(...)
     local env = {}
@@ -76,6 +77,17 @@ kernel.get_signal = setmetatable({}, {
 repeat
     last_signal = {computer.pullSignal(0)}
     kernel.scheduler.resume()
+
+    if kernel.hooks[last_signal[1]] and last_signal[1] ~= "resume" then
+        for _, hook in ipairs(kernel.hooks[last_signal[1]]) do
+            hook(table.unpack(last_signal, 2))
+        end
+    end
+    if kernel.hooks.resume then
+        for _, hook in ipairs(kernel.hooks.resume) do
+            hook(table.unpack(last_signal, 2))
+        end
+    end
 until not kernel.scheduler.threads[1]
 
 computer.shutdown()
