@@ -12,12 +12,12 @@ do
     kernel.filesystem = filesystem
 end
 kernel.filesystem.mount(computer.getBootAddress(), "/")
-
 --#include "devfs.lua"
+
+--#include "eventhooks.lua"
 --#include "console.lua"
 --#include "printk.lua"
 --#include "scheduler.lua"
---#include "eventhooks.lua"
 
 local function gen_env(...)
     local env = {}
