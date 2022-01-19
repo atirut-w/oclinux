@@ -17,7 +17,7 @@ do
         end
     end
 
-    kernel.register_chrdev("tty", {
+    kernel.register_chrdev("console", {
         read = function(count)
             local type, _, charcode, keycode = kernel.get_signal()
             if type == "key_down" and charcode ~= 0 then
