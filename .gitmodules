@@ -1,0 +1,3 @@
+[submodule "opencomputers-autocompletions"]
+	path = opencomputers-autocompletions
+	url = https://github.com/atirut-w/opencomputers-autocompletions
