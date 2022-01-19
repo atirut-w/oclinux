@@ -61,7 +61,16 @@ do
                     if char == "\a" then
                         computer.beep(1000, 0.1)
                     elseif char == "\b" then
-                        -- TODO: Implement backspace.
+                        x = x - 1
+                        if x < 1 then
+                            if y > 1 then
+                                y = y - 1
+                                x = w
+                            else
+                                x = 1
+                            end
+                        end
+                        gpu.set(x, y, " ")
                     elseif char == "\f" then
                         lf()
                     elseif char == "\n" then
