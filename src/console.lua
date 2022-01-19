@@ -19,6 +19,7 @@ do
     end
 
     do
+        local blink_interval = 0.5
         local blink_timer = 0
         local visible = true
         local last_x, last_y = x, y
@@ -26,7 +27,7 @@ do
         kernel.register_hook("timer", function(delta)
             blink_timer = blink_timer - delta
             if blink_timer <= 0 then
-                blink_timer = 0.5
+                blink_timer = blink_interval
                 visible = not visible
 
                 if visible then
@@ -35,10 +36,9 @@ do
                     gpu.bitblt(0, 1, 1, w, h, textbuffer)
                 end
             elseif x ~= last_x or y ~= last_y then
-                -- Force cursor to be visible
-                visible = false
-                blink_timer = 0
-                -- The code above might look confusing, but look even further up to see why.
+                visible = true
+                blink_timer = blink_interval
+                gpu.set(x, y, "_")
 
                 last_x, last_y = x, y
             end
