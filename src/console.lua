@@ -19,6 +19,7 @@ do
     end
 
     do
+        local cursor = utf8.char(0x2588)
         local blink_interval = 0.5
         local blink_timer = 0
         local visible = true
@@ -31,14 +32,14 @@ do
                 visible = not visible
 
                 if visible then
-                    gpu.set(x, y, "_")
+                    gpu.set(x, y, cursor)
                 else
                     gpu.bitblt(0, 1, 1, w, h, textbuffer)
                 end
             elseif x ~= last_x or y ~= last_y then
                 visible = true
                 blink_timer = blink_interval
-                gpu.set(x, y, "_")
+                gpu.set(x, y, cursor)
 
                 last_x, last_y = x, y
             end
