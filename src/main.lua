@@ -12,8 +12,9 @@ do
     kernel.filesystem = filesystem
 end
 kernel.filesystem.mount(computer.getBootAddress(), "/")
-
 --#include "devfs.lua"
+
+--#include "eventhooks.lua"
 --#include "console.lua"
 --#include "printk.lua"
 --#include "scheduler.lua"
@@ -73,9 +74,23 @@ kernel.get_signal = setmetatable({}, {
     end
 })
 
+local last_uptime = computer.uptime()
 repeat
     last_signal = {computer.pullSignal(0)}
     kernel.scheduler.resume()
+
+    if kernel.hooks[last_signal[1]] and last_signal[1] ~= "timer" then
+        for _, hook in ipairs(kernel.hooks[last_signal[1]]) do
+            hook(table.unpack(last_signal, 2))
+        end
+    end
+    if kernel.hooks.timer then
+        for _, hook in ipairs(kernel.hooks.timer) do
+            hook(computer.uptime() - last_uptime)
+        end
+    end
+
+    last_uptime = computer.uptime()
 until not kernel.scheduler.threads[1]
 
 computer.shutdown()
