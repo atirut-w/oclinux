@@ -55,7 +55,12 @@ do
     end
 
     printk("Loading init...\n")
-    local chunk, err = load(f:read(math.huge), "=init", "t", gen_env(kernel.syscalls))
+    local init_content = ""
+    repeat
+        local data = f:read(math.huge)
+        init_content = init_content .. (data or "")
+    until not data
+    local chunk, err = load(init_content, "=init", "t", gen_env(kernel.syscalls))
     if not chunk then
         kernel.panic("Could not load init: " .. err)
     end
