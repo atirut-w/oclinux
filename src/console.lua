@@ -50,6 +50,8 @@ do
             local type, _, charcode, keycode = kernel.get_signal()
             if type == "key_down" and charcode ~= 0 then
                 return utf8.char(charcode)
+            else
+                return ""
             end
         end,
         write = function(data)
