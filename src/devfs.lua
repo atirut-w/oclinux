@@ -19,6 +19,12 @@ do
         device_files[name] = file
     end
 
+    --- Unregister a device file.
+    ---@param name string
+    function kernel.unregister_chrdev(name)
+        device_files[name] = nil
+    end
+
     kernel.filesystem.mount({
         open = function(path, mode)
             assert(not path:match("/"), "device file name cannot contain '/'")

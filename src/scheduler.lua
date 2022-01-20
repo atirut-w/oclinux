@@ -54,6 +54,12 @@ do
             scheduler.threads[pid] = nil
         end
     end
+
+    --- Kill a thread.
+    ---@param pid number
+    function scheduler.kill(pid)
+        scheduler.threads[pid] = nil
+    end
     
     kernel.scheduler = scheduler
 end

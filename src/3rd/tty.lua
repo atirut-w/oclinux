@@ -113,21 +113,6 @@ do
     }
   }
   local colors = color_profiles[1]
-
-  if type(k.cmdline["tty.profile"]) == "number" then
-    colors = color_profiles[k.cmdline["tty.profile"]] or color_profiles[1]
-  end
-
-  if type(k.cmdline["tty.colors"]) == "string" then
-    for color in k.cmdline["tty.colors"]:gmatch("[^,]+") do
-      local idx, col = color:match("(%x):(%x%x%x%x%x%x)")
-      if idx and col then
-        idx = tonumber(idx, 16) + 1
-        col = tonumber(col, 16)
-        colors[idx] = col or colors[idx]
-      end
-    end
-  end
   
   local len = unicode.len
   local sub = unicode.sub
@@ -484,9 +469,9 @@ do
   function _stream:write(...)
     checkArg(1, ..., "string")
 
-    local str = (k.util and k.util.concat or temp)(...)
+    local str = table.concat({...}, "")
 
-    if self.attributes.line and not k.cmdline.nottylinebuffer then
+    if self.attributes.line then
       self.wb = self.wb .. str
       if self.wb:find("\n") then
         local ln = self.wb:match(".+\n")
@@ -592,7 +577,7 @@ do
     end
 
     if self.attributes.cursor then
-      c, f, b, pf, pb = gpu.get(self.cx, self.cy)
+      local c, f, b, pf, pb = gpu.get(self.cx, self.cy)
     
       if pf then
         gpu.setForeground(pb, true)
@@ -673,7 +658,7 @@ do
           (ch == 31 and 63) or ch
         ):upper()
     
-      if sigacts[tch] and not self.disabled[tch] and k.scheduler.processes
+      if sigacts[tch] and not self.disabled[tch] and kernel.scheduler.threads
           and not self.attributes.raw then
         -- fairly stupid method of determining the foreground process:
         -- find the highest PID associated with this TTY
@@ -681,13 +666,13 @@ do
         -- and where it doesn't the shell should handle it.
         local mxp = 0
 
-        for _k, v in pairs(k.scheduler.processes) do
+        for _k, v in pairs(kernel.scheduler.threads) do
           --k.log(k.loglevels.error, _k, v.name, v.io.stderr.tty, self.ttyn)
-          if v.io.stderr.tty == self.tty then
+          if v.stderr == self.tty then
             mxp = math.max(mxp, _k)
-          elseif v.io.stdin.tty == self.tty then
+          elseif v.stdin == self.tty then
             mxp = math.max(mxp, _k)
-          elseif v.io.stdout.tty == self.tty then
+          elseif v.stdout == self.tty then
             mxp = math.max(mxp, _k)
           end
         end
@@ -695,7 +680,7 @@ do
         --k.log(k.loglevels.error, "sending", sigacts[tch], "to", mxp == 0 and mxp or k.scheduler.processes[mxp].name)
 
         if mxp > 0 then
-          k.scheduler.kill(mxp, sigacts[tch])
+          kernel.scheduler.kill(mxp, sigacts[tch])
         end
 
         self.rb = ""
@@ -778,9 +763,12 @@ do
     self.write = closed
     self.flush = closed
     self.close = closed
-    k.event.unregister(self.key_handler_id)
-    k.event.unregister(self.clip_handler_id)
-    if self.ttyn then k.sysfs.unregister("/dev/tty"..self.ttyn) end
+    -- k.event.unregister(self.key_handler_id)
+    -- k.event.unregister(self.clip_handler_id)
+    kernel.unregister_hook("key_down", self.key_handler_id)
+    kernel.unregister_hook("clipboard", self.clip_handler_id)
+    -- if self.ttyn then kernel.unregister_chrdev("/dev/tty"..self.ttyn) end
+    if self.ttyn then kernel.unregister_chrdev("tty"..self.ttyn) end
     return true
   end
 
@@ -788,7 +776,7 @@ do
 
   -- this is the raw function for creating TTYs over components
   -- userspace gets somewhat-abstracted-away stuff
-  function k.create_tty(gpu, screen)
+  function kernel.create_tty(gpu, screen)
     checkArg(1, gpu, "string", "table")
     checkArg(2, screen, "string", "nil")
 
@@ -867,25 +855,39 @@ do
     end
     
     -- register a keypress handler
-    new.key_handler_id = k.event.register("key_down", function(...)
+    -- new.key_handler_id = k.event.register("key_down", function(...)
+    --   return new:key_down(...)
+    -- end)
+    new.key_handler_id = kernel.register_hook("key_down", function(...)
       return new:key_down(...)
     end)
 
-    new.clip_handler_id = k.event.register("clipboard", function(...)
+    -- new.clip_handler_id = k.event.register("clipboard", function(...)
+    --   return new:clipboard(...)
+    -- end)
+    new.clip_handler_id = kernel.register_hook("clipboard", function(...)
       return new:clipboard(...)
     end)
     
     -- register the TTY with the sysfs
-    if k.sysfs then
-      k.sysfs.register(k.sysfs.types.tty, new, "/dev/tty"..ttyn)
-      new.ttyn = ttyn
-    end
+    -- if k.sysfs then
+    --   k.sysfs.register(k.sysfs.types.tty, new, "/dev/tty"..ttyn)
+    --   new.ttyn = ttyn
+    -- end
+    kernel.register_chrdev("tty"..ttyn, {
+      read = function(...)
+        return new:read(...)
+      end,
+      write = function(...)
+        return new:write(...)
+      end,
+    })
 
     new.tty = ttyn
 
-    if k.gpus then
-      k.gpus[ttyn] = proxy
-    end
+    -- if k.gpus then
+    --   k.gpus[ttyn] = proxy
+    -- end
     
     ttyn = ttyn + 1
     

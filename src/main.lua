@@ -15,7 +15,13 @@ do
 end
 kernel.filesystem.mount(computer.getBootAddress(), "/")
 --#include "devfs.lua"
+
 --#include "3rd/tty.lua"
+do
+    local gpu = component.list("gpu")()
+    kernel.create_tty(gpu)
+    kernel.filesystem.link("/dev/tty0", "/dev/console")
+end
 
 --#include "printk.lua"
 --#include "scheduler.lua"
