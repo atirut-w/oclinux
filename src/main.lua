@@ -22,7 +22,11 @@ kernel.filesystem.mount(computer.getBootAddress(), "/")
 local function gen_env(...)
     local env = {}
     for k, v in pairs(_G) do
-        if k ~= "kernel" then
+        if not ({
+            kernel = true,
+            computer = true,
+            component = true,
+        })[k] then
             env[k] = v
         end
     end
