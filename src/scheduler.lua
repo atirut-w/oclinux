@@ -19,7 +19,7 @@ do
     ---@param dir string
     ---@param args table
     ---@param handlers table<string, function>
-    ---@return number
+    ---@return integer
     function scheduler.spawn(name, func, dir, args, handlers)
         scheduler.threads[#scheduler.threads + 1] = {
             coroutine = coroutine.create(func),
@@ -31,7 +31,25 @@ do
         return #scheduler.threads
     end
 
+    --- Fork a new thread and return its PID. 
+    --- Since it is impossible to fork a coroutine, a new function must be used instead of the original. The new thread will inherit other properties of the original thread.
+    ---@param func function
+    ---@return integer
+    function kernel.syscalls.fork(func)
+        local thread = scheduler.threads[scheduler.current_pid]
+        local new_thread = {
+            coroutine = coroutine.create(func),
+            name = thread.name,
+            args = thread.args,
+            working_dir = thread.working_dir,
+            handlers = thread.handlers,
+        }
+        scheduler.threads[#scheduler.threads + 1] = new_thread
+        return #scheduler.threads
+    end
+
     kernel.register_hook("timer", function()
+        local cleanup = {}
         for i = 1, #scheduler.threads do
             scheduler.current_pid = i
             local thread = scheduler.threads[i]
@@ -53,6 +71,9 @@ do
             end
         end
         scheduler.current_pid = 0
+        for _, pid in ipairs(cleanup) do
+            scheduler.threads[pid] = nil
+        end
     end)
 
     --- Kill a thread.
