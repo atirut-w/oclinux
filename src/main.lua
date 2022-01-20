@@ -118,7 +118,7 @@ do
         kernel.panic("Could not load init: " .. err)
     end
 
-    kernel.scheduler.spawn("init", chunk, "/sbin/", {}, {
+    kernel.scheduler.spawn("init", chunk, "/", nil, {
         error = function(err, co)
             kernel.panic("Init crashed: " .. debug.traceback(co, tostring(err)))
         end

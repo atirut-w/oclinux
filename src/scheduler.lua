@@ -1,7 +1,6 @@
 -- Round-robin coroutine scheduler
 
 do
-
     ---@class Thread
     ---@field name string
     ---@field coroutine thread
@@ -25,8 +24,8 @@ do
         scheduler.threads[#scheduler.threads + 1] = {
             coroutine = coroutine.create(func),
             name = name,
-            args = args or {},
-            working_dir = dir,
+            args = args,
+            working_dir = kernel.filesystem.canonical(dir),
             handlers = handlers or {},
         }
         return #scheduler.threads
@@ -42,7 +41,7 @@ do
                 if coroutine.status(thread.coroutine) == "dead" then
                     cleanup[#cleanup + 1] = i
                 else
-                    local ok, err = coroutine.resume(thread.coroutine, table.unpack(thread.args))
+                    local ok, err = coroutine.resume(thread.coroutine, thread.args and table.unpack(thread.args))
                     if not ok then
                         table.insert(cleanup, i)
 
