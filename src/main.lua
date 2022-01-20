@@ -2,6 +2,8 @@
 kernel = {}
 kernel.syscalls = {}
 
+--#include "eventhooks.lua"
+
 do
     --#include "3rd/filesystem.lua" "filesystem"
 
@@ -13,9 +15,8 @@ do
 end
 kernel.filesystem.mount(computer.getBootAddress(), "/")
 --#include "devfs.lua"
+--#include "3rd/tty.lua"
 
---#include "eventhooks.lua"
---#include "console.lua"
 --#include "printk.lua"
 --#include "scheduler.lua"
 
