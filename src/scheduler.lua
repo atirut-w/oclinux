@@ -5,6 +5,8 @@ do
     ---@class Thread
     ---@field name string
     ---@field coroutine thread
+    ---@field args table
+    ---@field working_dir string
     ---@field handlers table<string, function>
 
     local scheduler = {}
@@ -15,12 +17,16 @@ do
     --- Spawn a new thread and return its PID.
     ---@param name string
     ---@param func function
+    ---@param dir string
+    ---@param args table
     ---@param handlers table<string, function>
     ---@return number
-    function scheduler.spawn(name, func, handlers)
+    function scheduler.spawn(name, func, dir, args, handlers)
         scheduler.threads[#scheduler.threads + 1] = {
             coroutine = coroutine.create(func),
             name = name,
+            args = args or {},
+            working_dir = dir,
             handlers = handlers or {},
         }
         return #scheduler.threads
@@ -36,7 +42,7 @@ do
                 if coroutine.status(thread.coroutine) == "dead" then
                     cleanup[#cleanup + 1] = i
                 else
-                    local ok, err = coroutine.resume(thread.coroutine)
+                    local ok, err = coroutine.resume(thread.coroutine, table.unpack(thread.args))
                     if not ok then
                         table.insert(cleanup, i)
 
