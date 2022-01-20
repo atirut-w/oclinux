@@ -135,8 +135,6 @@ kernel.get_signal = setmetatable({}, {
 local last_uptime = computer.uptime()
 repeat
     last_signal = {computer.pullSignal(0)}
-    kernel.scheduler.resume()
-
     if kernel.hooks[last_signal[1]] and last_signal[1] ~= "timer" then
         for _, hook in ipairs(kernel.hooks[last_signal[1]]) do
             hook(table.unpack(last_signal))

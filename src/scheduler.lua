@@ -31,9 +31,7 @@ do
         return #scheduler.threads
     end
 
-    --- Resume all threads.
-    function scheduler.resume()
-        local cleanup = {}
+    kernel.register_hook("timer", function()
         for i = 1, #scheduler.threads do
             scheduler.current_pid = i
             local thread = scheduler.threads[i]
@@ -55,10 +53,7 @@ do
             end
         end
         scheduler.current_pid = 0
-        for _, pid in ipairs(cleanup) do
-            scheduler.threads[pid] = nil
-        end
-    end
+    end)
 
     --- Kill a thread.
     ---@param pid number
