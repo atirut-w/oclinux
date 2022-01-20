@@ -767,6 +767,7 @@ do
     -- k.event.unregister(self.clip_handler_id)
     kernel.unregister_hook("key_down", self.key_handler_id)
     kernel.unregister_hook("clipboard", self.clip_handler_id)
+    kernel.unregister_hook("timer", self.timer_id)
     -- if self.ttyn then kernel.unregister_chrdev("/dev/tty"..self.ttyn) end
     if self.ttyn then kernel.unregister_chrdev("tty"..self.ttyn) end
     return true
@@ -867,6 +868,10 @@ do
     -- end)
     new.clip_handler_id = kernel.register_hook("clipboard", function(...)
       return new:clipboard(...)
+    end)
+
+    new.timer_id = kernel.register_hook("timer", function()
+      return new:flush()
     end)
     
     -- register the TTY with the sysfs

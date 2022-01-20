@@ -18,8 +18,8 @@ kernel.filesystem.mount(computer.getBootAddress(), "/")
 
 --#include "3rd/tty.lua"
 do
-    local gpu = component.list("gpu")()
-    kernel.create_tty(gpu)
+    local gpu = component.proxy(component.list("gpu")())
+    kernel.create_tty(gpu, gpu.getScreen())
     kernel.filesystem.link("/dev/tty0", "/dev/console")
 end
 
@@ -97,7 +97,7 @@ repeat
 
     if kernel.hooks[last_signal[1]] and last_signal[1] ~= "timer" then
         for _, hook in ipairs(kernel.hooks[last_signal[1]]) do
-            hook(table.unpack(last_signal, 2))
+            hook(table.unpack(last_signal))
         end
     end
     if kernel.hooks.timer then
