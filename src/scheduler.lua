@@ -49,6 +49,28 @@ do
         return #scheduler.threads
     end
 
+    --- Execute program.
+    ---@param path string
+    ---@vararg any
+    function kernel.syscalls.execve(path, ...)
+        assert(scheduler.current_pid ~= 0, "cannot execve from kernel")
+
+        local f, e = kernel.filesystem.open(path, "r")
+        assert(f, e)
+
+        local buffer = ""
+        repeat
+            local data, e = f:read(math.huge)
+            buffer = buffer .. (data or "")
+        until not data
+
+        local program, e = load(buffer, "=" .. path, "t", kernel.gen_env(kernel.syscalls))
+        assert(program, e)
+
+        scheduler.threads[scheduler.current_pid].coroutine = coroutine.create(program)
+        scheduler.threads[scheduler.current_pid].args = {...}
+    end
+
     kernel.register_hook("timer", function()
         local cleanup = {}
         for i = 1, #scheduler.threads do

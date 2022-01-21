@@ -68,7 +68,7 @@ end
 --#include "printk.lua"
 --#include "scheduler.lua"
 
-local function gen_env(...)
+function kernel.gen_env(...)
     local env = {}
     for k, v in pairs(_G) do
         if not ({
@@ -113,7 +113,7 @@ do
         local data = f:read(math.huge)
         init_content = init_content .. (data or "")
     until not data
-    local chunk, err = load(init_content, "=init", "t", gen_env(kernel.syscalls))
+    local chunk, err = load(init_content, "=init", "t", kernel.gen_env(kernel.syscalls))
     if not chunk then
         kernel.panic("Could not load init: " .. err)
     end
