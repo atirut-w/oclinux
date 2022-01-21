@@ -36,6 +36,7 @@ do
     ---@param func function
     ---@return integer
     function kernel.syscalls.fork(func)
+        assert(scheduler.current_pid ~= 0, "cannot fork from kernel")
         local thread = scheduler.threads[scheduler.current_pid]
         local new_thread = {
             coroutine = coroutine.create(func),
