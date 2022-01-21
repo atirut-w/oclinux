@@ -3,58 +3,9 @@ kernel = {}
 kernel.syscalls = {}
 
 --#include "eventhooks.lua"
+--#include "filesystem.lua"
+--#include "loadfile.lua"
 
-do
-    --#include "3rd/filesystem.lua" "filesystem"
-
-    kernel.syscalls.mount = filesystem.mount
-    kernel.syscalls.umount = filesystem.umount
-
-    function kernel.syscalls.chdir(path)
-        assert(path, "missing path")
-        path = filesystem.canonical(path)
-        assert(filesystem.exists(path), "path does not exist")
-        assert(filesystem.isDirectory(path), "path is not a directory")
-        kernel.scheduler.threads[kernel.scheduler.current_pid].working_dir = path
-    end
-
-    ---@type file*[]
-    local open_files = {}
-
-    function kernel.syscalls.open(file, mode)
-        file = filesystem.canonical(file)
-        if file:sub(1, 1) ~= "/" then
-            file = kernel.scheduler.threads[kernel.scheduler.current_pid].working_dir .. "/" .. file
-        end
-        local f, e = filesystem.open(file, mode)
-        assert(f, e)
-        open_files[#open_files + 1] = f
-        return #open_files
-    end
-
-    function kernel.syscalls.close(fd)
-        assert(open_files[fd], "bad file descriptor")
-        open_files[fd]:close()
-        open_files[fd] = nil
-    end
-
-    function kernel.syscalls.read(fd, size)
-        assert(open_files[fd], "bad file descriptor")
-        return open_files[fd]:read(size)
-    end
-
-    function kernel.syscalls.write(fd, data)
-        assert(open_files[fd], "bad file descriptor")
-        return open_files[fd]:write(data)
-    end
-
-    function kernel.syscalls.lseek(fd, offset, whence)
-        assert(open_files[fd], "bad file descriptor")
-        return open_files[fd]:seek(offset, whence)
-    end
-
-    kernel.filesystem = filesystem
-end
 kernel.filesystem.mount(computer.getBootAddress(), "/")
 --#include "devfs.lua"
 
@@ -100,30 +51,7 @@ function kernel.panic(fmt, ...)
     end
 end
 
-do
-    local printk = kernel.printk
-    local f = kernel.filesystem.open("/sbin/init.lua", "r")
-    if not f then
-        kernel.panic("Init not found")
-    end
-
-    printk("Loading init...\n")
-    local init_content = ""
-    repeat
-        local data = f:read(math.huge)
-        init_content = init_content .. (data or "")
-    until not data
-    local chunk, err = load(init_content, "=init", "t", kernel.gen_env(kernel.syscalls))
-    if not chunk then
-        kernel.panic("Could not load init: " .. err)
-    end
-
-    kernel.scheduler.spawn("init", chunk, "/", nil, {
-        error = function(err, co)
-            kernel.panic("Init crashed: " .. debug.traceback(co, tostring(err)))
-        end
-    })
-end
+kernel.scheduler.spawn("/sbin/init.lua", "/sbin/init.lua")
 
 local last_signal = {}
 kernel.get_signal = setmetatable({}, {
@@ -145,8 +73,9 @@ repeat
             hook(computer.uptime() - last_uptime)
         end
     end
-
     last_uptime = computer.uptime()
-until not kernel.scheduler.threads[1]
+until not kernel.scheduler.kill(1, 0)
 
-computer.shutdown()
+while true do
+    computer.pullSignal()
+end

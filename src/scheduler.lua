@@ -2,127 +2,105 @@
 
 do
     ---@class Thread
-    ---@field name string
     ---@field coroutine thread
-    ---@field args table
-    ---@field working_dir string
-    ---@field handlers table<string, function>
+    ---@field cwd string
+    ---@field comm string
+    ---@field cmdline string[]
+    ---@field environ string[]
+    ---@field fd table<string, function>[]
 
     local scheduler = {}
-    scheduler.current_pid = 0
-    ---@type Thread[]
     scheduler.threads = {}
+    scheduler.current_pid = 0
 
     --- Spawn a new thread and return its PID.
-    ---@param name string
-    ---@param func function
-    ---@param dir string
-    ---@param args table
-    ---@param handlers table<string, function>
-    ---@return integer
-    function scheduler.spawn(name, func, dir, args, handlers)
-        scheduler.threads[#scheduler.threads + 1] = {
-            coroutine = coroutine.create(func),
-            name = name,
-            args = args,
-            working_dir = kernel.filesystem.canonical(dir),
-            handlers = handlers or {},
-        }
-        return #scheduler.threads
-    end
-
-    --- Fork a new thread and return its PID. 
-    --- Since it is impossible to fork a coroutine, a new function must be used instead of the original. The new thread will inherit other properties of the original thread.
-    ---
-    --- NOTE: Thread handlers will not be inherited, as some handlers(for example, init's crash handler) may not be suitable for the new thread.
-    ---@param func function
-    ---@param handlers table<string, function>
-    ---@return integer
-    function kernel.syscalls.fork(func, handlers)
-        assert(scheduler.current_pid ~= 0, "cannot fork from kernel")
-        local thread = scheduler.threads[scheduler.current_pid]
-        local new_thread = {
-            coroutine = coroutine.create(func),
-            name = thread.name,
-            args = thread.args,
-            working_dir = thread.working_dir,
-            handlers = handlers or {},
-        }
-        scheduler.threads[#scheduler.threads + 1] = new_thread
-        return #scheduler.threads
-    end
-
-    --- Execute program.
     ---@param path string
-    ---@vararg any
-    function kernel.syscalls.execve(path, ...)
-        assert(scheduler.current_pid ~= 0, "cannot execve from kernel")
+    ---@param args string[]
+    ---@param env string[]
+    ---@return integer
+    function scheduler.spawn(path, args, env)
+        local chunk, e = kernel.loadfile(path, kernel.gen_env(kernel.syscalls))
+        assert(chunk, e)
 
-        local f, e = kernel.filesystem.open(path, "r")
-        assert(f, e)
+        ---@type Thread
+        local thread = {}
+        thread.coroutine = coroutine.create(chunk)
+        thread.cwd = "/"
+        thread.comm = (args or {})[1]
+        thread.cmdline = args or {}
+        thread.environ = env or {}
+        thread.fd = {
+            kernel.filesystem.open("/dev/console", "r"),
+            kernel.filesystem.open("/dev/console", "w"),
+            kernel.filesystem.open("/dev/console", "w"),
+        }
 
-        local buffer = ""
-        repeat
-            local data = f:read(math.huge)
-            buffer = buffer .. (data or "")
-        until not data
-
-        local program, e = load(buffer, "=" .. path, "t", kernel.gen_env(kernel.syscalls))
-        assert(program, e)
-
-        scheduler.threads[scheduler.current_pid].coroutine = coroutine.create(program)
-        scheduler.threads[scheduler.current_pid].args = {...}
+        scheduler.threads[#scheduler.threads + 1] = thread
+        return #scheduler.threads
     end
+
+    --- Fork the current thread.
+    ---@param func function
+    ---@return integer
+    function kernel.syscalls.fork(func)
+        local thread = {}
+
+        for k, v in pairs(scheduler.threads[scheduler.current_pid]) do
+            thread[k] = v
+        end
+        thread.coroutine = coroutine.create(func)
+
+        scheduler.threads[#scheduler.threads + 1] = thread
+        return #scheduler.threads
+    end
+
+    --- Execute a program in the current thread, replacing the current program.
+    ---@param path string
+    ---@param args string[]
+    ---@param env string[]
+    function kernel.syscalls.execve(path, args, env)
+        local chunk, e = kernel.loadfile(path, kernel.gen_env(kernel.syscalls))
+        assert(chunk, e)
+
+        local thread = scheduler.threads[scheduler.current_pid]
+        thread.coroutine = coroutine.create(chunk)
+        thread.comm = (args or {})[1]
+        thread.cmdline = args or {}
+        thread.environ = env or {}
+
+        scheduler.threads[scheduler.current_pid] = thread
+    end
+
+    --- Kill a thread.
+    ---@param pid number
+    ---@param signal number
+    function scheduler.kill(pid, signal)
+        -- TODO: Actually implement signals
+        if scheduler.threads[pid] then
+            if signal ~= 0 then
+                scheduler.threads[pid] = nil
+            end
+            return true
+        else
+            return false
+        end
+    end
+    kernel.syscalls.kill = scheduler.kill
 
     kernel.register_hook("timer", function()
-        local cleanup = {}
-        for i = 1, #scheduler.threads do
-            scheduler.current_pid = i
-            local thread = scheduler.threads[i]
-            if thread then
-                if coroutine.status(thread.coroutine) == "dead" then
-                    cleanup[#cleanup + 1] = i
-                else
-                    local ok, err = coroutine.resume(thread.coroutine, thread.args and table.unpack(thread.args))
-                    if not ok then
-                        table.insert(cleanup, i)
-
-                        if thread.handlers.error then
-                            thread.handlers.error(err, thread.coroutine)
-                        else
-                            kernel.printk("%s\n", debug.traceback(thread.coroutine, err))
-                        end
-                    end
+        for pid, thread in pairs(scheduler.threads) do
+            scheduler.current_pid = pid
+            if coroutine.status(thread.coroutine) == "dead" then
+                scheduler.kill(pid)
+            else
+                local ok, e = coroutine.resume(thread.coroutine, table.unpack(thread.cmdline), table.unpack(thread.environ))
+                if not ok then
+                    thread.fd[3]:write(debug.traceback(thread.coroutine, e) .. "\n")
                 end
             end
         end
         scheduler.current_pid = 0
-        for _, pid in ipairs(cleanup) do
-            scheduler.threads[pid] = nil
-        end
     end)
-
-    ---@param pid integer
-    ---@param signal integer
-    function kernel.syscalls.kill(pid, signal)
-        assert(pid, "pid is nil")
-        assert(signal, "signal is nil")
-        if pid < 1 then
-            return nil
-        end
-        if scheduler.threads[pid]then
-            if signal ~= 0 then
-                if scheduler.threads[pid].handlers[signal] then
-                    scheduler.threads[pid].handlers[signal]()
-                end
-                scheduler.threads[pid] = nil
-            end
-            return 0
-        else
-            return nil
-        end
-    end
-    scheduler.kill = kernel.syscalls.kill
     
     kernel.scheduler = scheduler
 end
