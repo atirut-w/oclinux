@@ -60,7 +60,9 @@ do
     ---@param env string[]
     function kernel.syscalls.execve(path, args, env)
         local chunk, e = kernel.loadfile(path, kernel.gen_env(kernel.syscalls))
-        assert(chunk, e)
+        if not chunk then
+            return nil, e
+        end
 
         local thread = scheduler.threads[scheduler.current_pid]
         thread.coroutine = coroutine.create(chunk)
