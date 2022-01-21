@@ -63,7 +63,7 @@ do
 
         local buffer = ""
         repeat
-            local data, e = f:read(math.huge)
+            local data = f:read(math.huge)
             buffer = buffer .. (data or "")
         until not data
 
