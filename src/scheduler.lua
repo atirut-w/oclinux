@@ -33,9 +33,12 @@ do
 
     --- Fork a new thread and return its PID. 
     --- Since it is impossible to fork a coroutine, a new function must be used instead of the original. The new thread will inherit other properties of the original thread.
+    ---
+    --- NOTE: Thread handlers will not be inherited, as some handlers(for example, init's crash handler) may not be suitable for the new thread.
     ---@param func function
+    ---@param handlers table<string, function>
     ---@return integer
-    function kernel.syscalls.fork(func)
+    function kernel.syscalls.fork(func, handlers)
         assert(scheduler.current_pid ~= 0, "cannot fork from kernel")
         local thread = scheduler.threads[scheduler.current_pid]
         local new_thread = {
@@ -43,7 +46,7 @@ do
             name = thread.name,
             args = thread.args,
             working_dir = thread.working_dir,
-            handlers = thread.handlers,
+            handlers = handlers or {},
         }
         scheduler.threads[#scheduler.threads + 1] = new_thread
         return #scheduler.threads
