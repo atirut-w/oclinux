@@ -102,11 +102,27 @@ do
         end
     end)
 
-    --- Kill a thread.
-    ---@param pid number
-    function scheduler.kill(pid)
-        scheduler.threads[pid] = nil
+    ---@param pid integer
+    ---@param signal integer
+    function kernel.syscalls.kill(pid, signal)
+        assert(pid, "pid is nil")
+        assert(signal, "signal is nil")
+        if pid < 1 then
+            return nil
+        end
+        if scheduler.threads[pid]then
+            if signal ~= 0 then
+                if scheduler.threads[pid].handlers[signal] then
+                    scheduler.threads[pid].handlers[signal]()
+                end
+                scheduler.threads[pid] = nil
+            end
+            return 0
+        else
+            return nil
+        end
     end
+    scheduler.kill = kernel.syscalls.kill
     
     kernel.scheduler = scheduler
 end
