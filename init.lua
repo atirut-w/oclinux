@@ -2,6 +2,8 @@ if computer.getArchitecture() ~= "Lua 5.3" then
     computer.setArchitecture("Lua 5.3")
 end
 
+component.proxy(component.list("gpu")()).set(1,1,"Loading kernel...")
+
 ---@type function
 local kernel
 do
